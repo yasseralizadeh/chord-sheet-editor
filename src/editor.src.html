@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord Sheet Editor</title>
+<meta name="description" content="Write guitar chord sheets for Persian (RTL) and English (LTR) songs and poems: chords and lyrics on a time grid, strum patterns, printable PDF. Free, runs in your browser.">
+<meta property="og:title" content="Chord Sheet Editor">
+<meta property="og:description" content="Guitar chord sheets for Persian and English songs and poems — chords and words placed on the beat, ready to print.">
+<meta property="og:type" content="website">
+<meta name="author" content="Yasser Alizadeh">
+<style>
+/* Layout: settings bar on top; the printable Letter sheets below are the editor itself. */
+@font-face{font-family:"Vazirmatn";font-weight:400;src:url(data:font/woff2;base64,{{VAZIR400}}) format("woff2")}
+@font-face{font-family:"Vazirmatn";font-weight:500;src:url(data:font/woff2;base64,{{VAZIR500}}) format("woff2")}
+@font-face{font-family:"Vazirmatn";font-weight:700;src:url(data:font/woff2;base64,{{VAZIR700}}) format("woff2")}
+@font-face{font-family:"Lalezar";src:url(data:font/woff2;base64,{{LALEZAR_AR}}) format("woff2");unicode-range:U+0600-06FF,U+200C-200E,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:"Lalezar";src:url(data:font/woff2;base64,{{LALEZAR_LAT}}) format("woff2");unicode-range:U+0000-00FF}
+@font-face{font-family:"Barlow Condensed";font-weight:600;src:url(data:font/woff2;base64,{{BARLOW600}}) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;src:url(data:font/woff2;base64,{{BARLOW700}}) format("woff2")}
+
+:root{
+  --ui-bg:#e9e7e2; --ui-panel:#f8f7f4; --ui-fg:#22252b; --ui-muted:#6c6f76; --ui-line:#d4d1ca; --ui-accent:#8a2b2b; --ui-hover:rgba(138,43,43,.07);
+  --paper:#ffffff; --ink:#1b1d22; --ink-soft:#5d6068; --rule:#2a2c31; --grid:#cfccc5; --off:#e6e3dd;
+  --chord:#8a2b2b; --delay:#b0702a;
+  --f-lyric:"Vazirmatn", Tahoma, sans-serif;
+  --f-display:"Lalezar", "Vazirmatn", sans-serif;
+  --f-chord:"Barlow Condensed", "Arial Narrow", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ui-bg:#17181b;--ui-panel:#202226;--ui-fg:#e6e4df;--ui-muted:#9a9ca3;--ui-line:#34363c;--ui-accent:#d9867c;--ui-hover:rgba(217,134,124,.12);color-scheme:dark}}
+:root[data-theme="dark"]{--ui-bg:#17181b;--ui-panel:#202226;--ui-fg:#e6e4df;--ui-muted:#9a9ca3;--ui-line:#34363c;--ui-accent:#d9867c;--ui-hover:rgba(217,134,124,.12);color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--ui-bg);color:var(--ui-fg);font:14px/1.45 var(--f-lyric);-webkit-text-size-adjust:100%}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;padding:0;margin:-1px}
+
+/* ---------- settings bar ---------- */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ui-panel);border-bottom:1px solid var(--ui-line);padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;direction:ltr}
+.top .brand{font:700 15px/1 var(--f-chord);letter-spacing:.08em;text-transform:uppercase;margin-right:4px}
+.field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ui-muted)}
+select,button,.top input,.mbtn{font:500 13px var(--f-lyric);color:var(--ui-fg);background:var(--ui-bg);border:1px solid var(--ui-line);border-radius:6px;padding:5px 8px}
+.top input{width:52px}
+button,.mbtn{cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--ui-accent)}
+button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#fff}
+.grp{display:flex;gap:4px;align-items:center;position:relative}
+.spacer{flex:1}
+.hint{flex-basis:100%;font-size:12px;color:var(--ui-muted);margin:0}
+.hint kbd{font:11px ui-monospace,Menlo,monospace;border:1px solid var(--ui-line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--ui-bg);color:var(--ui-fg)}
+:focus-visible{outline:2px solid var(--ui-accent);outline-offset:1px}
+#zoom{display:none}
+#undo:disabled,#redo:disabled{opacity:.4;cursor:default}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;background:var(--ui-fg);color:var(--ui-panel);padding:8px 14px;border-radius:8px;font-size:13px;max-width:calc(100% - 32px);direction:ltr}
+
+/* file menu */
+.menu{position:absolute;top:calc(100% + 6px);right:0;z-index:25;min-width:230px;background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:5px;display:flex;flex-direction:column}
+.menu .mi{all:unset;box-sizing:border-box;display:block;padding:9px 11px;border-radius:6px;font:500 14px var(--f-lyric);color:var(--ui-fg);cursor:pointer}
+.menu .mi:hover,.menu .mi:focus-visible{background:var(--ui-hover)}
+.menu hr{border:0;border-top:1px solid var(--ui-line);margin:4px 2px}
+
+.stage{padding-block:24px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto}
+
+/* ---------- PAPER ---------- */
+.book{display:flex;flex-direction:column;align-items:center;gap:28px;width:max-content;margin:0 auto}
+.page{position:relative;background:var(--paper);color:var(--ink);width:8.5in;height:11in;padding:.45in .6in .35in;box-shadow:0 1px 3px rgba(0,0,0,.12),0 8px 30px rgba(0,0,0,.08)}
+[contenteditable]{outline:none;border-radius:3px;-webkit-user-select:text;user-select:text}
+[contenteditable]:hover{background:var(--ui-hover)}
+[contenteditable]:focus{background:var(--ui-hover);box-shadow:inset 0 -2px 0 var(--chord)}
+[contenteditable]:empty::before{content:attr(data-ph);color:#b9b6ae}
+
+.head{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start;border-bottom:2px solid var(--rule);padding-bottom:8px}
+.title{font:400 30pt/1.15 var(--f-display);margin:0;min-width:3em}
+.subtitle{font:400 11.5pt/1.5 var(--f-lyric);color:var(--ink-soft);margin-top:2px;min-width:3em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font:500 10pt var(--f-lyric);color:var(--ink-soft);align-items:center}
+.meta b{font:700 11.5pt var(--f-chord);color:var(--ink);direction:ltr;unicode-bidi:isolate}
+.strumkey{display:inline-flex;border:1px solid var(--grid);border-radius:3px;overflow:hidden}
+.strumkey button{all:unset;width:16px;text-align:center;font:600 10pt/17px var(--f-chord);color:var(--ink);cursor:pointer}
+.strumkey button.beat{background:#f1efea}
+.strumkey button:hover{background:#f3e3df}
+.strumkey button:focus-visible{outline:2px solid var(--chord)}
+.notes{font:400 10pt/1.6 var(--f-lyric);color:var(--ink-soft);margin-top:6px;min-width:6em}
+.diagrams{display:flex;gap:8px;direction:ltr}
+.diagram{text-align:center}
+.diagram .nm{font:700 12pt/1 var(--f-chord);color:var(--chord)}
+.diagram svg{display:block}
+
+.sec-label{display:flex;align-items:center;gap:8px;margin:6px 0 2px}
+.sec-label .name{font:700 11pt var(--f-lyric);min-width:2em}
+.sec-label .rule{flex:1;border-bottom:1px dotted var(--grid)}
+.sec-tools{display:flex;gap:4px;direction:ltr}
+
+.mline{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr)) 30px;font-size:var(--lf,13.5pt);margin:0 0 3px}
+.bar{display:grid;grid-template-columns:repeat(var(--s),minmax(0,1fr));grid-template-rows:20px 28px 13px;border-inline-start:1.5px solid var(--rule);min-width:0}
+.bar.last{border-inline-end:1.5px solid var(--rule)}
+.chordc{grid-row:1;display:flex;align-items:flex-end;padding-inline-start:2px;min-width:0;overflow:visible;position:relative;z-index:2}
+.chordc .cv{display:none;font:700 14pt/20px var(--f-chord);color:var(--chord);direction:ltr;white-space:nowrap}
+.cv .star{color:var(--delay)}
+.chordc input{border:0;margin:0;padding:0;background:transparent;outline:none;-webkit-appearance:none;appearance:none;height:20px;font:700 14pt/20px var(--f-chord);color:var(--chord);direction:ltr;min-width:12px;max-width:80px;border-radius:3px;cursor:text}
+.chordc input:hover{background:var(--ui-hover)}
+.chordc input:focus{background:var(--ui-hover);box-shadow:inset 0 -2px 0 var(--chord)}
+.lyr{grid-row:2;display:flex;align-items:center;min-width:0;padding-inline:2px 0;font:500 1em/28px var(--f-lyric);white-space:pre;overflow:visible;position:relative;z-index:1}
+.lyr.covered{z-index:0}
+.lyr.clash{box-shadow:inset 0 -2px 0 #d33}
+.lyr.ext::after{content:"";flex:1 1 auto;min-width:4px;height:1.6px;background:var(--ink);align-self:center;margin-top:7px}
+.lyr.ext{padding:0}
+.lyr.lead::after{content:"";flex:1 1 auto;height:0;border-top:1.5px dotted var(--delay);align-self:center}
+.lyr.lead.leadend::after{margin-inline-end:6px}
+.lyr.joinin{padding-inline-start:0}
+.lyr.off,.strum.off{background:var(--off);cursor:pointer}
+.lyr.off{z-index:0}
+.lyr.off{border-radius:0}
+.lyr.off:hover{background:#dcd8d0}
+.strum{grid-row:3;border-top:1px solid var(--grid);font:600 8.5pt/12px var(--f-chord);text-align:center;color:var(--ink-soft)}
+.strum.beat{border-inline-start:1px solid var(--grid)}
+.strum.first{border-inline-start:0}
+.strum.on{color:var(--ink)}
+.strum.off{color:#a9a59d}
+.mline.nolyric .lyr{display:none}
+.mline.nolyric .bar{grid-template-rows:20px 13px}
+.mline.nolyric .strum{grid-row:2}
+.tail{display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11pt/1 var(--f-chord);gap:2px}
+.tail .pick{font-size:15pt;color:var(--chord)}
+.tail .rep{direction:ltr}
+
+.ltools{position:absolute;inset-inline-end:-6px;top:100%;z-index:3;display:none;flex-wrap:wrap;gap:3px;direction:ltr;background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:7px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,.12);max-width:100%}
+.mline:hover .ltools,.mline:focus-within .ltools,.mline.act .ltools{display:flex}
+.ltools button,.sec-tools button,.after button{font:600 11px var(--f-lyric);padding:2px 7px;border-radius:5px;background:var(--ui-bg);color:var(--ui-fg)}
+.ltools button.on,.sec-tools button.on{background:var(--ui-accent);color:#fff;border-color:var(--ui-accent)}
+.after{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:22px;direction:ltr}
+.addsec{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;font-size:12px;color:var(--ui-muted)}
+.after .addpage{padding:8px 18px;border-style:dashed;font-size:13px}
+
+.runhead{display:flex;justify-content:space-between;font:600 9pt var(--f-chord);letter-spacing:.06em;color:var(--ink-soft);border-bottom:1px solid var(--grid);padding-bottom:4px;margin-bottom:4px}
+.pfoot{position:absolute;bottom:.16in;left:0;right:0;text-align:center;font:600 8.5pt/1.35 var(--f-chord);color:#9a968e;letter-spacing:.05em;direction:ltr}
+.pfoot .pn{display:block;color:var(--ink-soft);font-size:9pt}
+
+.legend{margin-top:10px;padding-top:6px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;font:400 8.5pt/1.5 var(--f-lyric);color:var(--ink-soft)}
+.legend .sym{display:inline-block;min-width:20px;font:700 12pt var(--f-chord);color:var(--chord);text-align:center}
+.legend .sym.d{color:var(--delay)}
+.legend .sym.g{display:inline-block;min-width:0;width:18px;height:11px;background:var(--off);vertical-align:-1px;margin-inline-end:3px}
+.legend .en{display:block;direction:ltr;text-align:left;font-size:8pt;opacity:.85}
+.book[dir=ltr] .legend .fa{display:none}
+
+/* autocomplete, dialogs */
+.ac{position:fixed;z-index:20;background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:7px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:3px;direction:ltr;min-width:70px}
+.ac div{font:700 14px/1 var(--f-chord);padding:8px 10px;border-radius:5px;cursor:pointer;color:var(--ui-fg)}
+.ac div.sel,.ac div:hover{background:var(--ui-accent);color:#fff}
+.ac div small{font-weight:600;opacity:.6;margin-left:6px}
+.lib{position:fixed;inset:0;z-index:30;background:rgba(20,20,24,.35);display:grid;place-items:center;padding:16px}
+.libbox{width:min(520px,100%);max-height:80vh;overflow:auto;background:var(--ui-panel);color:var(--ui-fg);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);direction:ltr}
+.libhead{display:flex;justify-content:space-between;align-items:center}
+.libhead h2{margin:0;font:700 18px var(--f-chord);letter-spacing:.04em;text-transform:uppercase}
+.libsave{margin:14px 0 6px}
+.libsave label{font-size:12px;color:var(--ui-muted)}
+.libsave .row{display:flex;gap:8px;margin-top:4px}
+.libsave input{flex:1;min-width:0;font:500 16px var(--f-lyric);padding:7px 10px;border:1px solid var(--ui-line);border-radius:6px;background:var(--ui-bg);color:var(--ui-fg);unicode-bidi:plaintext}
+.libmsg{min-height:1em;margin:4px 0 0;font-size:12px;color:var(--ui-accent)}
+.liblist{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--ui-line)}
+.liblist li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--ui-line);flex-wrap:wrap}
+.liblist .nm{flex:1;min-width:0;font:600 14px var(--f-lyric);unicode-bidi:plaintext;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liblist .sub{font-size:11px;color:var(--ui-muted);white-space:nowrap}
+.liblist button{font-size:12px;padding:5px 9px}
+.liblist button.danger{color:#c33}
+.liblist .empty{color:var(--ui-muted);font-size:13px;justify-content:center}
+.libnote{font-size:11.5px;color:var(--ui-muted);margin:10px 0 0}
+
+/* on-screen key bar for phones and tablets (soft keyboards have no Tab key) */
+.keybar{position:fixed;left:0;right:0;top:0;z-index:35;display:flex;gap:5px;padding:6px max(8px,env(safe-area-inset-left,0px));background:var(--ui-panel);border-top:1px solid var(--ui-line);box-shadow:0 -4px 14px rgba(0,0,0,.1);direction:ltr;overflow-x:auto}
+.keybar button{flex:1 0 auto;font:600 13px var(--f-lyric);padding:9px 10px;border-radius:7px;white-space:nowrap}
+
+/* phones / tablets */
+@media (max-width:900px){
+  .top{position:static}
+  .hint{display:none}
+  #zoom{display:inline-block}
+  .stage{padding-block:14px 120px}
+}
+@media (pointer:coarse){
+  .top input,.top select,.libsave input{font-size:16px}
+  .ltools button{font-size:12px;padding:5px 8px}
+}
+
+@page{size:letter;margin:0}
+/* print and PDF capture share these rules */
+@media print{
+  body{background:#fff}
+  .top,.ltools,.sec-tools,.after,.screen,.keybar,.ac,.toast,.lib{display:none!important}
+  .stage{padding:0;overflow:visible}
+  .book{display:block;zoom:1!important;width:auto;margin:0}
+  .page{box-shadow:none;margin:0;height:10.98in;overflow:hidden;break-after:page}
+  .page:last-child{break-after:auto}
+  [contenteditable]:empty::before{content:""}
+  [contenteditable],[contenteditable]:hover,[contenteditable]:focus{background:none!important;box-shadow:none!important}
+  .lyr.off{background:var(--off)!important}
+  .lyr.clash{box-shadow:none!important}
+  .chordc input{display:none}
+  .chordc .cv{display:inline}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+body.pdf{background:#fff}
+body.pdf .top,body.pdf .ltools,body.pdf .sec-tools,body.pdf .after,body.pdf .screen,body.pdf .keybar,body.pdf .ac,body.pdf .lib{display:none!important}
+body.pdf .book{zoom:1!important}
+body.pdf .page{box-shadow:none}
+body.pdf [contenteditable]:empty::before{content:""}
+body.pdf [contenteditable],body.pdf [contenteditable]:hover,body.pdf [contenteditable]:focus{background:none!important;box-shadow:none!important}
+body.pdf .lyr.off{background:var(--off)!important}
+body.pdf .lyr.clash{box-shadow:none!important}
+body.pdf .chordc input{display:none}
+body.pdf .chordc .cv{display:inline}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Chord Sheet</span>
+  <label class="field">Language
+    <select id="lang"><option value="fa">فارسی (RTL)</option><option value="en">English (LTR)</option></select></label>
+  <label class="field">Time
+    <select id="time"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option></select></label>
+  <label class="field">Key <input id="key" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+  <label class="field">Capo <input id="capo" type="number" inputmode="numeric" min="0" max="12"></label>
+  <div class="grp field">Transpose <button id="tdown" title="Down a semitone">−1</button><button id="tup" title="Up a semitone">+1</button></div>
+  <label class="field">Bars / line
+    <select id="bpl"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+  <span class="spacer"></span>
+  <div class="grp">
+    <button id="undo" title="Undo (Ctrl/⌘+Z)" aria-label="Undo">↶ Undo</button>
+    <button id="redo" title="Redo (Ctrl/⌘+Shift+Z)" aria-label="Redo">↷</button>
+    <button id="zoom" title="Switch between whole-page view and actual size">100%</button>
+    <button id="filebtn" aria-haspopup="true" aria-expanded="false" aria-controls="menu">File ▾</button>
+    <div id="menu" class="menu" role="menu" hidden>
+      <button class="mi" role="menuitem" data-m="new">New song</button>
+      <button class="mi" role="menuitem" data-m="demo">Open demo: Hafez (Farsi)</button>
+      <button class="mi" role="menuitem" data-m="demoen">Open demo: Amazing Grace (English)</button>
+      <hr>
+      <button class="mi" role="menuitem" data-m="poemsave">Save as poem…</button>
+      <button class="mi" role="menuitem" data-m="poems">My poems…</button>
+      <hr>
+      <button class="mi" role="menuitem" data-m="export">Export song file (.json)</button>
+      <label class="mi" role="menuitem" for="openfile" tabindex="0">Import song file…</label>
+    </div>
+    <input type="file" id="openfile" class="vh" tabindex="-1" aria-hidden="true">
+    <button class="primary" id="print">Print / PDF</button>
+  </div>
+  <p class="hint">Click a chord spot and type (autocomplete; add <b>*</b> for a delayed entry, e.g. G*). Type lyrics under the slot where they are sung.
+    <kbd>Space</kbd> at the end of a word or in an empty slot → next slot ·
+    <kbd>Tab</kbd> → next slot, word continues (letters stay joined) ·
+    <kbd>Shift</kbd>+<kbd>Space</kbd> → a real space ·
+    <kbd>Enter</kbd> → next line ·
+    <kbd>Backspace</kbd> in an empty slot → back ·
+    Click a grey slot to use it again ·
+    <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> undo, +<kbd>Shift</kbd> redo</p>
+</header>
+<div class="stage">
+  <div id="page" class="book"></div>
+  <div id="after" class="after"></div>
+</div>
+<div id="ac" class="ac" role="listbox" hidden></div>
+<div id="keybar" class="keybar" hidden>
+  <button data-k="space" title="Insert a space">␣ space</button>
+  <button data-k="next" title="Next slot">next →</button>
+  <button data-k="join" title="Next slot, the word continues">join ـ</button>
+  <button data-k="prev" title="Previous slot">← back</button>
+  <button data-k="line" title="Next line">↵ line</button>
+  <button data-k="grey" title="Grey out the rest of this line">▨ grey rest</button>
+  <button data-k="undo" title="Undo">↶</button>
+  <button data-k="done" title="Close the keyboard">done</button>
+</div>
+<div id="lib" class="lib" hidden>
+  <div class="libbox" role="dialog" aria-modal="true" aria-labelledby="libtitle">
+    <div class="libhead"><h2 id="libtitle">My poems</h2><button id="libclose" aria-label="Close">✕</button></div>
+    <form id="libsave" class="libsave">
+      <label for="libname">Save this sheet as</label>
+      <div class="row"><input id="libname" autocomplete="off" required><button class="primary" type="submit">Save</button></div>
+      <p id="libmsg" class="libmsg" role="status"></p>
+    </form>
+    <ul id="liblist" class="liblist"></ul>
+    <p class="libnote">Poems are kept in this browser on this device. Use File → Export song file to keep a copy or move a poem to another device.</p>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+/* ---------- music data ---------- */
+const SLOTS = {"4/4":8,"3/4":6,"2/4":4,"6/8":6};
+const BEAT = {"4/4":2,"3/4":2,"2/4":2,"6/8":3};
+const DEF_STRUM = {"4/4":"D-DU-UDU","3/4":"D-DUDU","2/4":"D-DU","6/8":"D-UD-U"};
+const SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+const QUAL = ["","m","7","m7","maj7","sus2","sus4","add9","6","m6","9","dim","aug","5"];
+const SHAPES = {Em:"022000",E:"022100",E7:"020100",Em7:"022030",D:"xx0232",Dm:"xx0231",D7:"xx0212",G:"320003",G7:"320001",Am:"x02210",A:"x02220",A7:"x02020",Am7:"x02010",C:"x32010",C7:"x32310",Cmaj7:"x32000",B7:"x21202",Bm:"x24432",F:"133211",Fmaj7:"xx3210",Dsus4:"xx0233",Dsus2:"xx0230",Asus4:"x02230",Asus2:"x02200",Esus4:"022200"};
+const ARROW = {D:"↓",U:"↑"};
+const ZWJ = "‍";
+const OWNER = "© YasserAlizadeh";
+const PAGE_IN = {w:8.5, h:11, limit:10.45};     // content must end above 10.45in (footer below)
+const LEX = {
+  fa:{key:"گام",time:"ریتم",capo:"کاپو",strum:"ریتم دست راست",title:"نام آهنگ",sub:"خواننده / شاعر",notes:"یادداشت اجرا…",sec:{intro:"موزیک",verse:"بند",chorus:"برگردان",bridge:"میان‌بند",solo:"تکنوازی",outro:"پایان"}},
+  en:{key:"Key",time:"Time",capo:"Capo",strum:"Strum",title:"Song title",sub:"Artist / poet",notes:"Performance notes…",sec:{intro:"Intro",verse:"Verse",chorus:"Chorus",bridge:"Bridge",solo:"Solo",outro:"Outro"}}
+};
+
+/* contenteditable="plaintext-only" where supported (keeps pasted text plain), else "true" */
+const CE = (() => { try{ const d = document.createElement("div"); d.contentEditable = "plaintext-only"; return d.contentEditable === "plaintext-only" ? "plaintext-only" : "true"; }catch(e){ return "true"; } })();
+const TOUCH = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+
+/* ---------- state ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const emptyBar = n => ({slots: Array.from({length:n}, () => ({c:"", t:"", j:false}))});
+const emptyLine = (bars, n) => ({bars: Array.from({length:bars}, () => emptyBar(n)), pick:false, rep:0});
+let S;
+
+function newSong(lang = "fa"){
+  const n = SLOTS["4/4"];
+  return {lang, title:"", subtitle:"", notes:"", time:"4/4", key:"Em", capo:"", strum:DEF_STRUM["4/4"], bpl:4,
+    sections:[{name:LEX[lang].sec.verse, lines:[emptyLine(4, n), emptyLine(4, n)]}]};
+}
+
+/* demo: Hafez, ghazal 1 (public domain). bar spec: "Chord|text" puts both at slot 1;
+   "Chord*|text" puts the text 2 slots later; arrays give exact slots [slot, chord, text, joins]. */
+function demoSong(){
+  const n = 8;
+  const bar = spec => {
+    const b = emptyBar(n);
+    if (Array.isArray(spec)){ spec.forEach(([k, c, t, j]) => Object.assign(b.slots[k], {c:c||"", t:t||"", j:!!j})); return b; }
+    const [c, t = ""] = spec.split("|");
+    b.slots[0].c = c;
+    b.slots[c.endsWith("*") ? 2 : 0].t = t;
+    return b;
+  };
+  const line = (specs, pick = false, rep = 0) => ({bars: specs.map(bar), pick, rep, noLyric: specs.every(x => typeof x === "string" && !x.includes("|"))});
+  return {lang:"fa", title:"الا یا ایها الساقی", subtitle:"حافظ — غزل ۱ · نمونه", notes:"ورود آواز در میزهای ستاره‌دار با تأخیر نسبت به شروع آکورد", time:"4/4", key:"Em", capo:"", strum:"D-DU-UDU", bpl:4,
+    sections:[
+      {name:"موزیک", lines:[line(["Em","D","G","G"], false, 2)]},
+      {name:"بند", lines:[
+        line(["Em|الا یا ایها","D|الساقی","G*|ادر کاسا", [[0,"Em"],[2,"","و ناولها"]]], true),
+        line(["Em|که عشق آسان","D|نمود اول","G*|ولی افتاد", [[0,"Em"],[2,"","مشکل‌ها"]]], true),
+        line(["Em|به بوی نافه‌ای","D|کآخر صبا","G*|زان طره", [[0,"Em"],[2,"","بگشاید"]]]),
+        line(["Em|ز تاب جعد","D|مشکینش","G*|چه خون افتاد", [[0,"Em"],[2,"","در دل‌ها"]]], true)]},
+      {name:"برگردان", lines:[
+        line(["Em|شب تاریک","G|و بیم موج","Em|و گردابی","Am|چنین هایل"]),
+        line(["Em|کجا دانند","D|حال ما", [[0,"G","سبک",true],[4,"Em","بار",true]], [[0,"Am","ان"],[3,"","ساحل‌ها"]]], true)]},
+      {name:"پایان", lines:[line(["Em","D","G","G"], false, 4)]}
+    ]};
+}
+
+/* demo: Amazing Grace (John Newton, 1779, public domain), 3/4.
+   6 slots per bar: the long note on beat 1 (slot 1), the short one on beat 3 (slot 5). */
+function demoEN(){
+  const B = (c, a = "", b = "", ja = false, jb = false) => {
+    const bar = emptyBar(6); Object.assign(bar.slots[0], {c, t:a, j:ja}); Object.assign(bar.slots[4], {t:b, j:jb}); return bar;
+  };
+  const line = (bars, o = {}) => ({bars, pick:false, rep:0, ...o});
+  return {lang:"en", title:"Amazing Grace", subtitle:"John Newton, 1779 · traditional melody", time:"3/4", key:"G", capo:"", strum:"D-DUDU", bpl:4,
+    notes:"Words in a bar’s last slot are pickups, sung on beat 3 before the next chord.",
+    sections:[
+      {name:"Intro", lines:[ line([B("G"), B("G"), B("D"), B("D", "", "A", false, true)]) ]},
+      {name:"Verse 1", lines:[
+        line([B("G", "maz", "ing", true), B("G", "grace", "how"), B("C", "sweet", "the"), B("G", "sound", "that")]),
+        line([B("G", "saved", "a"), B("Em", "wretch", "like"), B("D", "me", "", true), B("D", "", "I")]),
+        line([B("G", "once", "was"), B("G", "lost", "but"), B("C", "now", "am"), B("G", "found,", "was")]),
+        line([B("Em", "blind", "but"), B("D", "now", "I"), B("G", "see.", "", true), B("G", "", "’Twas")]) ]},
+      {name:"Verse 2", lines:[
+        line([B("G", "grace", "that"), B("G", "taught", "my"), B("C", "heart", "to"), B("G", "fear,", "and")]),
+        line([B("G", "grace", "my"), B("Em", "fears", "re", false, true), B("D", "lieved;", "", true), B("D", "", "how")]),
+        line([B("G", "pre", "cious", true), B("G", "did", "that"), B("C", "grace", "ap", false, true), B("G", "pear", "the")]),
+        line([B("Em", "hour", "I"), B("D", "first", "be", false, true), B("G", "lieved.", "", true), B("G")]) ]},
+      {name:"Outro", lines:[ line([B("C"), B("G"), B("D"), B("G")], {noLyric:true, rep:2}) ]}
+    ]};
+}
+
+/* ---------- persistence (one working song per language) ---------- */
+const KEY = lang => "chordsheet-v4-" + lang;
+function save(typing){
+  const j = JSON.stringify(S);
+  record(j, typing);
+  try{ localStorage.setItem(KEY(S.lang), j); localStorage.setItem("chordsheet-v4-last", S.lang); }catch(e){}
+}
+/* ---------- undo / redo: snapshots of the song; a burst of typing counts as one step ---------- */
+let hist = [], fut = [], cur = null, lastType = 0, restoring = false;
+function record(j, typing){
+  if (restoring || j === cur){ cur = j; return syncUndo(); }
+  const now = Date.now();
+  const merge = typing && lastType && now - lastType < 1200;
+  if (cur !== null && !merge){ hist.push(cur); if (hist.length > 300) hist.shift(); }
+  cur = j; fut = []; lastType = typing ? now : 0;
+  syncUndo();
+}
+function resetHistory(){ hist = []; fut = []; cur = JSON.stringify(S); lastType = 0; syncUndo(); }
+function syncUndo(){ const u = $("#undo"), r = $("#redo"); if (u){ u.disabled = !hist.length; r.disabled = !fut.length; } }
+function restore(j){
+  const a = document.activeElement, id = a?.dataset?.t || null;
+  acHide(); a?.blur?.();
+  S = JSON.parse(j); restoring = true; lastType = 0;
+  try{ render(id ? {id, kind:"t"} : undefined); } finally { restoring = false; }
+  cur = j; syncUndo();
+}
+function undo(){ if (!hist.length){ toast("Nothing to undo."); return; } fut.push(cur); restore(hist.pop()); }
+function redo(){ if (!fut.length){ toast("Nothing to redo."); return; } hist.push(cur); restore(fut.pop()); }
+function load(lang){ try{ const t = localStorage.getItem(KEY(lang)); if (t) return JSON.parse(t); }catch(e){} return null; }
+function lastLang(){ try{ return localStorage.getItem("chordsheet-v4-last") || "fa"; }catch(e){ return "fa"; } }
+const sampleFor = lang => lang === "fa" ? demoSong() : demoEN();
+
+function toast(msg, ms = 3200){
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms);
+}
+
+/* ---------- chords ---------- */
+const ALL_CHORDS = [...new Set([...SHARP, ...FLAT])].flatMap(r => QUAL.map(q => r + q));
+let acFor = null, acSel = 0;
+function acShow(inp){
+  const raw = inp.value.trim(), star = raw.endsWith("*"), v = raw.replace("*", "");
+  const used = [...new Set(allSlots().map(x => x.c.replace("*", "")).filter(Boolean))];
+  const pool = [...used, ...ALL_CHORDS.filter(c => !used.includes(c))];
+  const lc = v.toLowerCase();
+  const list = !v ? used.slice(0, 8) : pool.filter(c => c.toLowerCase().startsWith(lc)).slice(0, 8);
+  const box = $("#ac");
+  if (!list.length || (list.length === 1 && list[0] === v)){ box.hidden = true; acFor = null; return; }
+  acFor = inp; acSel = 0;
+  box.innerHTML = list.map((c, i) => `<div data-v="${esc(c + (star ? "*" : ""))}" class="${i ? "" : "sel"}">${esc(c)}${star ? "*" : ""}${used.includes(c) ? "<small>in song</small>" : ""}</div>`).join("");
+  const r = inp.getBoundingClientRect();
+  box.style.top = (r.bottom + 4) + "px"; box.style.left = Math.max(4, Math.min(r.left, innerWidth - 130)) + "px"; box.hidden = false;
+}
+function acHide(){ $("#ac").hidden = true; acFor = null; }
+function acPick(v){ const inp = acFor; acHide(); if (!inp) return; inp.value = v; commitChord(inp); }
+function acKey(e){
+  if (!acFor || $("#ac").hidden) return false;
+  const items = [...$("#ac").children];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault(); items[acSel].classList.remove("sel");
+    acSel = (acSel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length; items[acSel].classList.add("sel"); return true;
+  }
+  if (e.key === "Enter" || e.key === "Tab"){ e.preventDefault(); acPick(items[acSel].dataset.v); return true; }
+  if (e.key === "Escape"){ acHide(); return true; }
+  return false;
+}
+$("#ac").addEventListener("pointerdown", e => { const d = e.target.closest("[data-v]"); if (d){ e.preventDefault(); acPick(d.dataset.v); } });
+function commitChord(inp){
+  if (inp.id === "key"){ S.key = normChord(inp.value.replace("*", "")); render(); return; }
+  const x = slotOf(inp.dataset.c); x.c = normChord(inp.value); render({id:inp.dataset.c, kind:"t", at:"start"});
+}
+function normChord(v){ v = v.trim(); return v ? v.charAt(0).toUpperCase() + v.slice(1) : ""; }
+function transposeChord(ch, d){
+  return ch.replace(/([A-G])([#b]?)/g, (m, r, a) => {
+    let i = SHARP.indexOf(r + a); if (i < 0) i = FLAT.indexOf(r + a); if (i < 0) return m;
+    i = (i + d + 12) % 12;
+    return (a === "b" || (d < 0 && !a) ? FLAT : SHARP)[i];
+  });
+}
+function chordSVG(name){
+  const sh = SHAPES[name.replace("*","")]; if (!sh) return "";
+  const W = 46, H = 56, x0 = 7, y0 = 12, dx = 6.4, dy = 10;
+  const fr = [...sh].map(c => c === "x" ? -1 : +c), mx = Math.max(...fr);
+  const base = mx > 4 ? Math.min(...fr.filter(f => f > 0)) : 1;
+  let g = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#1b1d22" stroke-width=".8">`;
+  for (let s = 0; s < 6; s++) g += `<line x1="${x0+s*dx}" y1="${y0}" x2="${x0+s*dx}" y2="${y0+4*dy}"/>`;
+  for (let f = 0; f <= 4; f++) g += `<line x1="${x0}" y1="${y0+f*dy}" x2="${x0+5*dx}" y2="${y0+f*dy}" stroke-width="${f===0&&base===1?2.4:.8}"/>`;
+  fr.forEach((f, s) => { const x = x0 + s*dx;
+    if (f === -1) g += `<path d="M${x-2} ${y0-7}l4 4m0 -4l-4 4" stroke-width="1"/>`;
+    else if (f === 0) g += `<circle cx="${x}" cy="${y0-5}" r="2" stroke-width="1"/>`;
+    else g += `<circle cx="${x}" cy="${y0+(f-base+.5)*dy}" r="2.6" fill="#1b1d22" stroke="none"/>`; });
+  if (base > 1) g += `<text x="${x0+5*dx+2}" y="${y0+dy*.8}" font-size="7" fill="#5d6068" stroke="none" font-family="sans-serif">${base}fr</text>`;
+  return g + "</svg>";
+}
+const allSlots = () => S.sections.flatMap(s => s.lines.flatMap(l => l.bars.flatMap(b => b.slots)));
+
+/* ---------- render ---------- */
+function render(focus){
+  const L = LEX[S.lang], dir = S.lang === "fa" ? "rtl" : "ltr", n = SLOTS[S.time], beat = BEAT[S.time];
+  const strum = [...S.strum.padEnd(n, "-")].slice(0, n);
+  const used = [...new Set(allSlots().map(x => x.c.replace("*","")).filter(Boolean))];
+  const nb = Math.max(S.bpl, ...S.sections.flatMap(s => s.lines.map(l => l.bars.length)));
+  const anyDelay = allSlots().some(x => x.c.endsWith("*"));
+  const anyPick = S.sections.some(s => s.lines.some(l => l.pick));
+  const anyOff = allSlots().some(x => x.g);
+
+  /* each sheet is a flat list of blocks so long sheets can flow onto the next page */
+  const sheets = [[]];
+  const push = b => sheets[sheets.length - 1].push(b);
+  push(`<div class="head"><div>
+    <h1 class="title" contenteditable="${CE}" data-f="title" data-ph="${L.title}">${esc(S.title)}</h1>
+    <div class="subtitle" contenteditable="${CE}" data-f="subtitle" data-ph="${L.sub}">${esc(S.subtitle)}</div>
+    <div class="meta">
+      <span>${L.time} <b>${esc(S.time)}</b></span>
+      ${S.key ? `<span>${L.key} <b>${esc(S.key)}</b></span>` : ""}
+      ${S.capo ? `<span>${L.capo} <b>${esc(S.capo)}</b></span>` : ""}
+      <span>${L.strum} <span class="strumkey" title="Tap to change">${strum.map((x, i) => `<button class="${i % beat === 0 ? "beat" : ""}" data-strum="${i}" aria-label="slot ${i+1}">${ARROW[x] || "·"}</button>`).join("")}</span></span>
+    </div>
+    <div class="notes" contenteditable="${CE}" data-f="notes" data-ph="${L.notes}">${esc(S.notes)}</div>
+  </div>
+  <div class="diagrams">${used.filter(c => SHAPES[c]).map(c => `<div class="diagram"><div class="nm">${esc(c)}</div>${chordSVG(c)}</div>`).join("")}</div></div>`);
+
+  S.sections.forEach((sec, si) => {
+    if (si > 0 && sec.newPage) sheets.push([]);
+    push(`<div class="sec-label">
+      <span class="name" contenteditable="${CE}" data-sec="${si}" data-ph="—">${esc(sec.name)}</span><span class="rule"></span>
+      <span class="sec-tools screen">${si ? `<button data-act="pgbreak" data-s="${si}" class="${sec.newPage ? "on" : ""}" title="Start this section on a new sheet">New page</button>` : ""}<button data-act="addline" data-s="${si}">+ line</button><button data-act="delsec" data-s="${si}">Delete section</button></span></div>`);
+    sec.lines.forEach((ln, li) => {
+      let h = `<div class="mline${ln.noLyric ? " nolyric" : ""}" style="--n:${nb}" data-s="${si}" data-l="${li}">`;
+      ln.bars.forEach((bar, bi) => {
+        h += `<div class="bar${bi === ln.bars.length - 1 ? " last" : ""}" style="--s:${n};grid-column:${bi+1}">`;
+        bar.slots.forEach((x, k) => {
+          const col = k + 1, id = `${si}.${li}.${bi}.${k}`, off = x.g && !x.t;
+          h += `<div class="chordc" style="grid-column:${col}"><input data-c="${id}" value="${esc(x.c)}" style="width:${cw(x.c)}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="chord"><span class="cv">${esc(x.c).replace("*", '<span class="star">*</span>')}</span></div>`;
+          h += off
+            ? `<div class="lyr off" style="grid-column:${col}" data-off="${id}" title="Unused — tap to use again"></div>`
+            : `<div class="lyr" style="grid-column:${col}" contenteditable="${CE}" data-t="${id}">${esc(x.t)}</div>`;
+          h += `<div class="strum${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[strum[k]] ? " on" : ""}${off ? " off" : ""}" style="grid-column:${col}">${ARROW[strum[k]] || "·"}</div>`;
+        });
+        h += `</div>`;
+      });
+      h += `<div class="tail" style="grid-column:${nb+1}">${ln.pick ? `<span class="pick">⊛</span>` : ""}${ln.rep ? `<span class="rep">×${ln.rep}</span>` : ""}</div>
+        <div class="ltools screen">
+          <button data-act="greyrest" title="Grey out unused slots from the selected slot (or after the last word) to the end of the line">▨ Grey rest</button>
+          <button data-act="ungrey" title="Make every slot in this line usable again">Un-grey</button>
+          <button data-act="pick" class="${ln.pick ? "on" : ""}" title="Finger-picking set at line end">⊛</button>
+          <button data-act="rep" title="Repeat count">×${ln.rep || 1}</button>
+          <button data-act="addbar">+ bar</button><button data-act="delbar">− bar</button>
+          <button data-act="lyrics" class="${ln.noLyric ? "on" : ""}" title="Hide the lyric row (instrumental line)">Instrumental</button>
+          <button data-act="dupline">Duplicate</button><button data-act="newline">+ line</button><button data-act="delline">Delete</button>
+        </div></div>`;
+      push(h);
+    });
+  });
+
+  const lg = [];
+  if (anyDelay) lg.push(`<div><span class="sym d">*</span><span class="fa">ورود آواز چند ضربه (دو زخمه) بعد از شروع آکورد؛ خط‌چین فاصلهٔ تأخیر را نشان می‌دهد.</span><span class="en">Vocal enters a couple of strums after the chord starts (dotted lead-in).</span></div>`);
+  if (anyPick) lg.push(`<div><span class="sym">⊛</span><span class="fa">اجرای الگوی ویژهٔ انگشتی (فینگرپیکینگ) در پایان خط.</span><span class="en">Special finger-picking set at the end of the line.</span></div>`);
+  lg.push(`<div><span class="sym">↓↑</span><span class="fa">هر میز ${n} خانهٔ زمانی دارد؛ هر هجا زیر خانه‌ای نوشته شده که در آن خوانده می‌شود.</span><span class="en">Each bar has ${n} time slots; every syllable sits under the slot where it is sung.</span></div>`);
+  lg.push(`<div><span class="sym">ـــ</span><span class="fa">خط اتصال یعنی کلمه ادامه دارد و کشیده خوانده می‌شود.</span><span class="en">A joining line means the word carries on (held or split by a chord change).</span></div>`);
+  if (anyOff) lg.push(`<div><span class="sym g"></span><span class="fa">خانه‌های خاکستری خالی می‌مانند؛ مصراع بعد در خط بعد شروع می‌شود.</span><span class="en">Grey slots stay empty; the next line of the poem starts on the next line.</span></div>`);
+  push(`<div class="legend">${lg.join("")}</div>`);
+
+  const book = $("#page");
+  book.dir = dir; book.lang = S.lang;
+  book.innerHTML = sheets.map(blocks => pageHTML(blocks.join(""))).join("");
+  $("#after").innerHTML = `<div class="addsec">Add section:
+    ${Object.values(L.sec).map(v => `<button data-act="addsec" data-name="${esc(v)}">${esc(v)}</button>`).join("")}</div>
+    <button class="addpage" data-act="addpage">+ New page</button>`;
+  decorate();
+  paginate();
+  syncTop();
+  applyZoom();
+  if (focus) focusSlot(focus.id, focus.kind, focus.at);
+  save();
+}
+function pageHTML(inner, cont){
+  return `<div class="page"><div class="pbody">${inner}</div></div>`;
+}
+
+/* Move whole blocks (lines, section titles, legend) that run past the bottom of a
+   sheet onto a new continuation sheet; then number the sheets. Never splits a line. */
+function paginate(){
+  const book = $("#page");
+  const L = LEX[S.lang];
+  let pages = [...book.querySelectorAll(".page")];
+  for (let i = 0; i < pages.length && i < 40; i++){
+    const p = pages[i], body = p.querySelector(".pbody");
+    if (i > 0 && !body.querySelector(".runhead")) body.insertAdjacentHTML("afterbegin", runheadHTML(L));
+    const r = p.getBoundingClientRect(), limit = r.top + r.width * PAGE_IN.limit / PAGE_IN.w;
+    const movable = () => [...body.children].filter(b => !b.classList.contains("runhead"));
+    const moved = [];
+    let blocks = movable();
+    while (blocks.length > 1 && blocks[blocks.length - 1].getBoundingClientRect().bottom > limit){
+      const last = blocks.pop(); moved.unshift(last); last.remove();
+    }
+    blocks = movable();
+    while (moved.length && blocks.length > 1 && blocks[blocks.length - 1].classList.contains("sec-label")){
+      const last = blocks.pop(); moved.unshift(last); last.remove();      // keep a section title with its first line
+    }
+    if (moved.length){
+      const np = document.createElement("div"); np.className = "page";
+      np.innerHTML = `<div class="pbody">${runheadHTML(L)}</div>`;
+      np.firstChild.append(...moved);
+      p.after(np); pages = [...book.querySelectorAll(".page")];
+    }
+  }
+  const N = pages.length;
+  pages.forEach((p, i) => {
+    p.querySelector(".pfoot")?.remove();
+    p.insertAdjacentHTML("beforeend", `<div class="pfoot">${esc(OWNER)}${N > 1 ? `<span class="pn">${i + 1} / ${N}</span>` : ""}</div>`);
+  });
+}
+function runheadHTML(L){ return `<div class="runhead"><span>${esc(S.title || "")}</span><span>${esc(S.key ? L.key + " " + S.key : "")}</span></div>`; }
+
+/* joining / held / lead-in decorations, recomputed after every edit */
+function decorate(){
+  S.sections.forEach((sec, si) => sec.lines.forEach((ln, li) => {
+    const flat = ln.bars.flatMap((b, bi) => b.slots.map((x, k) => ({x, id:`${si}.${li}.${bi}.${k}`})));
+    let hold = false, lead = false, joinNext = false;
+    flat.forEach(({x, id}, i) => {
+      const el = document.querySelector(`[data-t="${id}"]`);
+      if (x.c){ lead = x.c.endsWith("*"); }
+      if (!el){ hold = false; lead = false; joinNext = false; return; }       // grey slot
+      el.classList.remove("join", "ext", "lead", "leadend", "joinin");
+      if (x.t){
+        if (joinNext) el.classList.add("joinin");
+        hold = x.j; joinNext = x.j; lead = false;
+      } else if (hold){ el.classList.add("ext"); }
+      else if (lead){ el.classList.add("lead"); const nx = flat[i+1]; if (!nx || nx.x.t || nx.x.c || nx.x.g) el.classList.add("leadend"); }
+      paintText(el, x, el.classList.contains("joinin"));
+    });
+  }));
+  fitLines();
+}
+/* Slots keep equal width (= equal time). A syllable may run over the empty slots after
+   it; if it runs into the next syllable the line's font shrinks (to 10.5pt) and any clash
+   left is underlined red on screen. */
+function fitLines(){
+  for (const ml of document.querySelectorAll(".mline:not(.nolyric)")){
+    let size = 13.5; ml.style.removeProperty("--lf");
+    for (;;){
+      const clash = measureLine(ml);
+      if (!clash || size <= 10.5) break;
+      size -= .5; ml.style.setProperty("--lf", size + "pt");
+    }
+  }
+}
+function measureLine(ml){
+  const rtl = getComputedStyle(ml).direction === "rtl", cells = [...ml.querySelectorAll(".lyr")];
+  cells.forEach(c => c.classList.remove("covered", "clash"));
+  let reach = null, owner = null, clash = false;
+  for (const c of cells){
+    if (c.classList.contains("off")){ reach = null; owner = null; continue; }
+    const r = c.getBoundingClientRect(), start = rtl ? r.right : r.left;
+    const covered = reach !== null && (rtl ? start - 1 > reach : start + 1 < reach);
+    if (c.textContent.replace(/‍/g, "")){
+      if (covered){ clash = true; c.classList.add("clash"); owner?.classList.add("clash"); }
+      const rg = document.createRange(); rg.selectNodeContents(c); const tr = rg.getBoundingClientRect();
+      reach = rtl ? tr.left - 5 : tr.right + 5; owner = c;
+    } else if (covered){ c.classList.add("covered"); c.classList.remove("ext", "lead", "leadend"); }
+  }
+  return clash;
+}
+function paintText(el, x, joinin){
+  if (document.activeElement === el) return;
+  const want = (joinin && x.t ? ZWJ : "") + x.t + (x.j && x.t ? ZWJ : "");
+  if (el.textContent !== want) el.textContent = want;
+}
+const cw = v => v ? (v.length * .5 + .25) + "em" : "14px";
+const slotOf = id => { const [s, l, b, k] = id.split(".").map(Number); return S.sections[s].lines[l].bars[b].slots[k]; };
+const lineOf = id => { const [s, l] = id.split(".").map(Number); return S.sections[s].lines[l]; };
+
+/* ---------- zoom: whole page on phones, actual size for close editing ---------- */
+let fit = null;
+function applyZoom(){
+  const book = $("#page"), btn = $("#zoom");
+  const avail = document.documentElement.clientWidth - 24, pageW = 8.5 * 96;
+  const small = avail < pageW;
+  if (fit === null) fit = small;
+  const z = small && fit ? Math.max(.3, avail / pageW) : 1;
+  book.style.zoom = z === 1 ? "" : z;
+  $("#after").style.zoom = z === 1 ? "" : Math.max(z, .8);
+  btn.textContent = fit ? "Actual size" : "Fit page";
+}
+$("#zoom").addEventListener("click", () => { fit = !fit; applyZoom(); paginate(); });
+let rzT; addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { applyZoom(); }, 150); });
+
+/* ---------- navigation ---------- */
+function orderIds(){ return [...document.querySelectorAll("[data-t]")].map(e => e.dataset.t); }
+function focusSlot(id, kind = "t", at = "end"){
+  const el = document.querySelector(`[data-${kind}="${id}"]`); if (!el) return;
+  el.focus({preventScroll:false});
+  if (kind === "t"){
+    const r = document.createRange(), sel = getSelection();
+    r.selectNodeContents(el); r.collapse(at !== "end"); sel.removeAllRanges(); sel.addRange(r);
+  }
+}
+function step(id, d){
+  const ids = orderIds(), i = ids.indexOf(id) + d;
+  if (i >= 0 && i < ids.length) focusSlot(ids[i], "t", d > 0 ? "start" : "end");
+}
+function caretAtEnd(el){
+  const sel = getSelection(); if (!sel.rangeCount) return true;
+  const r = sel.getRangeAt(0), t = document.createRange();
+  t.selectNodeContents(el); t.setStart(r.endContainer, r.endOffset);
+  return t.toString().length === 0;
+}
+/* the editing actions shared by the keyboard and the on-screen key bar */
+const act = {
+  next(id){ slotOf(id).j = false; save(); decorate(); step(id, 1); },
+  join(id){ const x = slotOf(id); if (x.t) x.j = true; save(); decorate(); step(id, 1); },
+  prev(id){ step(id, -1); },
+  back(id){ const ids = orderIds(), p = ids[ids.indexOf(id) - 1]; if (p){ slotOf(p).j = false; save(); decorate(); focusSlot(p); } },
+  line(id){
+    const [s, l] = id.split(".").map(Number), sec = S.sections[s];
+    if (l === sec.lines.length - 1){ sec.lines.push(emptyLine(sec.lines[l].bars.length, SLOTS[S.time])); render(); }
+    const first = orderIds().find(t => t.startsWith(`${s}.${l+1}.`));
+    if (first) focusSlot(first, "t", "start");
+  },
+  space(){ allowSpace = true; document.execCommand("insertText", false, " "); },
+  grey(id){ greyRest(id); }
+};
+/* grey out the empty slots from `id` (or after the line's last word) to the end of the line */
+function greyRest(id, s, l){
+  if (id) [s, l] = id.split(".").map(Number);
+  const ln = S.sections[s].lines[l];
+  const flat = ln.bars.flatMap((b, bi) => b.slots.map((x, k) => ({x, key:`${s}.${l}.${bi}.${k}`})));
+  let start = id ? flat.findIndex(f => f.key === id) : -1;
+  if (start < 0){ start = 0; flat.forEach((f, i) => { if (f.x.t) start = i + 1; }); }
+  else if (flat[start].x.t) start++;
+  const covered = i => document.querySelector(`[data-t="${flat[i].key}"]`)?.classList.contains("covered");
+  while (start < flat.length && !flat[start].x.t && covered(start)) start++;   // leave room for the last word
+  let n = 0;
+  for (let i = start; i < flat.length && !flat[i].x.t; i++){ flat[i].x.g = true; n++; }
+  // a held word stops where the grey starts
+  for (let i = start - 1; i >= 0; i--) if (flat[i].x.t){ if (flat[i + 1]?.x.g) flat[i].x.j = false; break; }
+  if (!n) toast("Nothing to grey: the rest of this line already has words.");
+  render();
+  const nextLineFirst = orderIds().find(t => t.startsWith(`${s}.${l+1}.`));
+  if (nextLineFirst && id) focusSlot(nextLineFirst, "t", "start");
+}
+
+let lastLyr = null, allowSpace = false;
+const page = $("#page");
+page.addEventListener("focusin", e => {
+  const el = e.target;
+  if (el.dataset.t){
+    lastLyr = el.dataset.t;
+    const x = slotOf(el.dataset.t); if (el.textContent !== x.t) el.textContent = x.t;
+    showKeybar(true);
+  }
+});
+page.addEventListener("focusout", e => {
+  const el = e.target;
+  if (el.dataset.t){ setTimeout(() => { decorate(); if (!document.activeElement?.dataset?.t) showKeybar(false); }); }
+  if (el.dataset.c){ setTimeout(() => { if (acFor === el) acHide(); if (el.isConnected && normChord(el.value) !== slotOf(el.dataset.c).c){ slotOf(el.dataset.c).c = normChord(el.value); render(); } }, 0); }
+  if (el.dataset.f){ setTimeout(() => { if (!el.matches(":focus")) render(); }, 0); }
+});
+page.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.t){
+    const id = el.dataset.t, x = slotOf(id);
+    let t = el.textContent.replace(/‍/g, "");
+    if (/\n/.test(t)){ x.t = t.replace(/\n/g, ""); el.textContent = x.t; save(); act.line(id); return; }  // Enter on soft keyboards
+    // a space typed at the end of a word moves to the next slot (soft keyboards send no Space keydown)
+    if (!allowSpace && !e.isComposing && e.data && / $/.test(e.data) && / $/.test(t) && caretAtEnd(el)){
+      x.t = t.replace(/ +$/, ""); el.textContent = x.t; save(); act.next(id); return;
+    }
+    allowSpace = false;
+    x.t = t; if (!x.t) x.j = false; save(true);
+  }
+  else if (el.dataset.c){ el.style.width = cw(el.value); acShow(el); }
+  else if (el.dataset.f){ S[el.dataset.f] = el.textContent.trim(); save(true); }
+  else if (el.dataset.sec){ S.sections[el.dataset.sec].name = el.textContent.trim(); save(true); }
+});
+page.addEventListener("keydown", e => {
+  const el = e.target;
+  if (el.dataset.c){
+    if (acKey(e)) return;
+    if (e.key === "Enter"){ e.preventDefault(); commitChord(el); }
+    else if (e.key === "Escape"){ el.value = slotOf(el.dataset.c).c; el.blur(); }
+    return;
+  }
+  if (el.dataset.f || el.dataset.sec){ if (e.key === "Enter"){ e.preventDefault(); el.blur(); } return; }
+  if (!el.dataset.t || e.isComposing) return;
+  const id = el.dataset.t, x = slotOf(id);
+  if (e.key === " " && !e.shiftKey && (!x.t || caretAtEnd(el))){ e.preventDefault(); act.next(id); }
+  else if (e.key === " " && e.shiftKey){ e.preventDefault(); act.space(); }
+  else if (e.key === "Tab" && !e.shiftKey){ e.preventDefault(); act.join(id); }
+  else if (e.key === "Tab" && e.shiftKey){ e.preventDefault(); act.prev(id); }
+  else if (e.key === "Backspace" && !el.textContent){ e.preventDefault(); act.back(id); }
+  else if (e.key === "Enter"){ e.preventDefault(); act.line(id); }
+});
+page.addEventListener("paste", e => {
+  if (!e.target.closest("[contenteditable]")) return;
+  e.preventDefault(); allowSpace = true;
+  document.execCommand("insertText", false, (e.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " "));
+});
+/* buttons on the sheet (line/section tools, strum pattern) and grey slots */
+function sheetClick(e){
+  const off = e.target.closest("[data-off]");
+  if (off){ const id = off.dataset.off; slotOf(id).g = false; render({id, kind:"t", at:"start"}); return; }
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.strum !== undefined){
+    const n = SLOTS[S.time], arr = [...S.strum.padEnd(n, "-")].slice(0, n), i = +b.dataset.strum;
+    arr[i] = {D:"U", U:"-", "-":"D"}[arr[i]] || "D"; S.strum = arr.join(""); render(); return;
+  }
+  const a = b.dataset.act, ml = b.closest(".mline"), n = SLOTS[S.time];
+  const s = +(b.dataset.s ?? ml?.dataset.s), l = +(ml?.dataset.l), sec = S.sections[s], ln = sec?.lines[l];
+  switch (a){
+    case "greyrest": {
+      const inLine = lastLyr && lastLyr.startsWith(`${s}.${l}.`) ? lastLyr : null;
+      greyRest(inLine, s, l); return;
+    }
+    case "ungrey": ln.bars.forEach(b => b.slots.forEach(x => delete x.g)); break;
+    case "pick": ln.pick = !ln.pick; break;
+    case "rep": ln.rep = ({0:2, 1:2, 2:3, 3:4, 4:0})[ln.rep || 0]; break;
+    case "addbar": ln.bars.push(emptyBar(n)); break;
+    case "delbar": if (ln.bars.length > 1) ln.bars.pop(); break;
+    case "lyrics": ln.noLyric = !ln.noLyric; break;
+    case "dupline": sec.lines.splice(l + 1, 0, JSON.parse(JSON.stringify(ln))); break;
+    case "newline": sec.lines.splice(l + 1, 0, emptyLine(ln.bars.length, n)); break;
+    case "delline": sec.lines.splice(l, 1); if (!sec.lines.length) S.sections.splice(s, 1); break;
+    case "addline": sec.lines.push(emptyLine(S.bpl, n)); break;
+    case "delsec": S.sections.splice(s, 1); if (!S.sections.length) S.sections.push({name:LEX[S.lang].sec.verse, lines:[emptyLine(S.bpl, n)]}); break;
+    case "addsec": S.sections.push({name:b.dataset.name, lines:[emptyLine(S.bpl, n)]}); break;
+    case "pgbreak": sec.newPage = !sec.newPage; break;
+    case "addpage": S.sections.push({name:LEX[S.lang].sec.verse, newPage:true, lines:[emptyLine(S.bpl, n), emptyLine(S.bpl, n)]}); break;
+    default: return;
+  }
+  render();
+}
+page.addEventListener("click", sheetClick);
+$("#after").addEventListener("click", sheetClick);
+/* touch: a tap on a line shows its tools (no hover on phones) */
+page.addEventListener("pointerdown", e => {
+  if (e.pointerType !== "touch") return;
+  const ml = e.target.closest(".mline");
+  document.querySelectorAll(".mline.act").forEach(m => { if (m !== ml) m.classList.remove("act"); });
+  ml?.classList.add("act");
+});
+
+/* ---------- on-screen key bar (phones/tablets) ---------- */
+const keybar = $("#keybar");
+function showKeybar(on){ keybar.hidden = !(on && TOUCH); if (!keybar.hidden) placeKeybar(); }
+function placeKeybar(){
+  const vv = window.visualViewport;
+  const h = keybar.offsetHeight || 50;
+  const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
+  keybar.style.top = Math.max(0, bottom - h) + "px";
+}
+if (window.visualViewport){ visualViewport.addEventListener("resize", () => { if (!keybar.hidden) placeKeybar(); }); visualViewport.addEventListener("scroll", () => { if (!keybar.hidden) placeKeybar(); }); }
+keybar.addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-k]"); if (!b) return;
+  e.preventDefault();                                   // keep the caret (and the keyboard) in the slot
+  const el = document.activeElement?.dataset?.t ? document.activeElement : document.querySelector(`[data-t="${lastLyr}"]`);
+  const k = b.dataset.k;
+  if (k === "done"){ el?.blur(); showKeybar(false); return; }
+  if (k === "undo"){ undo(); return; }
+  if (!el) return;
+  const id = el.dataset.t;
+  if (k === "space"){ if (document.activeElement !== el) focusSlot(id); act.space(); }
+  else act[k]?.(id);
+});
+keybar.addEventListener("touchstart", e => { if (e.target.closest("[data-k]")) e.preventDefault(); }, {passive:false});
+
+/* ---------- top bar ---------- */
+function syncTop(){
+  $("#lang").value = S.lang; $("#time").value = S.time; $("#key").value = S.key; $("#capo").value = S.capo; $("#bpl").value = S.bpl;
+  document.documentElement.lang = S.lang;
+}
+$("#lang").addEventListener("change", e => { save(); const lang = e.target.value; S = load(lang) || sampleFor(lang); render(); resetHistory(); });
+$("#undo").addEventListener("click", undo);
+$("#redo").addEventListener("click", redo);
+/* Ctrl/⌘+Z everywhere (also inside slots, replacing the browser's own per-field undo) */
+document.addEventListener("keydown", e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if ((k === "z" && e.shiftKey) || k === "y"){ e.preventDefault(); redo(); }
+}, true);
+/* iPhone shake / three-finger undo arrives as an input event */
+document.addEventListener("beforeinput", e => {
+  if (e.inputType === "historyUndo"){ e.preventDefault(); undo(); }
+  else if (e.inputType === "historyRedo"){ e.preventDefault(); redo(); }
+}, true);
+$("#time").addEventListener("change", e => {
+  const n = SLOTS[e.target.value];
+  S.sections.forEach(sec => sec.lines.forEach(ln => ln.bars.forEach(b => {
+    while (b.slots.length < n) b.slots.push({c:"", t:"", j:false});
+    if (b.slots.length > n){
+      const extra = b.slots.splice(n), last = b.slots[n-1];
+      extra.forEach(x => { if (x.t) last.t = (last.t ? last.t + " " : "") + x.t; if (x.c && !last.c) last.c = x.c; });
+    }
+  })));
+  S.time = e.target.value; S.strum = DEF_STRUM[S.time]; render();
+});
+$("#key").addEventListener("input", e => acShow(e.target));
+$("#key").addEventListener("keydown", e => { if (!acKey(e) && e.key === "Enter"){ e.preventDefault(); commitChord(e.target); } });
+$("#key").addEventListener("blur", e => setTimeout(() => { acHide(); if (normChord(e.target.value) !== S.key) commitChord(e.target); }, 0));
+$("#capo").addEventListener("change", e => { S.capo = e.target.value && e.target.value !== "0" ? e.target.value : ""; render(); });
+$("#bpl").addEventListener("change", e => { S.bpl = +e.target.value; render(); });
+function transpose(d){ allSlots().forEach(x => { if (x.c) x.c = transposeChord(x.c, d); }); if (S.key) S.key = transposeChord(S.key, d); render(); }
+$("#tup").addEventListener("click", () => transpose(1));
+$("#tdown").addEventListener("click", () => transpose(-1));
+
+/* ---------- file menu ---------- */
+const menu = $("#menu"), filebtn = $("#filebtn");
+function menuOpen(on){ menu.hidden = !on; filebtn.setAttribute("aria-expanded", on); }
+filebtn.addEventListener("click", e => { e.stopPropagation(); menuOpen(menu.hidden); });
+document.addEventListener("click", e => { if (!menu.hidden && !menu.contains(e.target) && e.target !== filebtn) menuOpen(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape"){ menuOpen(false); if (!$("#lib").hidden) libClose(); } });
+menu.addEventListener("click", e => {
+  const b = e.target.closest("[data-m]");
+  if (e.target.closest("label")){ setTimeout(() => menuOpen(false), 0); return; }   // the label opens the file picker itself
+  if (!b) return;
+  menuOpen(false);
+  const m = b.dataset.m;
+  if (m === "new"){ S = newSong(S.lang); render(); }
+  else if (m === "demo"){ S = demoSong(); render(); }
+  else if (m === "demoen"){ S = demoEN(); render(); }
+  else if (m === "poemsave") libOpen(true);
+  else if (m === "poems") libOpen(false);
+  else if (m === "export") exportSong();
+});
+menu.querySelector("label").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("#openfile").click(); } });
+$("#openfile").addEventListener("change", async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if (!d || !Array.isArray(d.sections)) throw 0;
+    S = d; render(); toast(`Opened “${d.title || f.name}”.`);
+  }catch(_){ toast("That file is not a song file. Choose a .json file exported from this editor."); }
+});
+
+/* ---------- saving files: the Claude viewer's download prompt, or a plain browser download ---------- */
+let dlCap;
+async function downloadsCap(){
+  if (dlCap !== undefined) return dlCap;
+  try{ dlCap = window.claude?.use ? await window.claude.use("downloads") : null; }catch(e){ dlCap = null; }
+  return dlCap;
+}
+async function saveFile(filename, data, mime){
+  const dl = await downloadsCap();
+  if (dl){
+    try{ await dl.save({filename, data}); toast(`Saved ${filename}.`); return true; }
+    catch(err){
+      const c = err?.code;
+      if (c === "declined") toast("Save cancelled.");
+      else if (c === "rate_limited") toast("A save prompt is already open. Try again in a moment.");
+      else toast("Saving files isn’t available in this view.");
+      return false;
+    }
+  }
+  const blob = data instanceof Blob ? data : new Blob([data], {type:mime});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  return true;
+}
+const fileBase = () => (S.title || "song").replace(/[\\/:*?"<>|]/g, "_").trim() || "song";
+function exportSong(){ saveFile(fileBase() + ".json", JSON.stringify(S, null, 1), "application/json"); }
+
+/* ---------- print / PDF ---------- */
+function loadScript(src){
+  return new Promise((ok, bad) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => bad(new Error("load")); document.head.appendChild(s); });
+}
+/* The PDF renderer draws a word letter by letter (losing the Persian letter joins) when the
+   word holds a half-space (ZWNJ). Splitting the text node around each ZWNJ keeps the layout
+   identical but lets each part be drawn whole. */
+function keepWordsWhole(doc){
+  const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), nodes = [];
+  for (let n; (n = w.nextNode());) if (n.nodeValue.includes("\u200C")) nodes.push(n);
+  for (let n of nodes){
+    let i;
+    while ((i = n.nodeValue.indexOf("\u200C")) >= 0){
+      const zw = i > 0 ? n.splitText(i) : n;
+      n = zw.length > 1 ? zw.splitText(1) : null;
+      if (!n) break;
+    }
+  }
+}
+async function makePDF(){
+  if (!window.html2canvas) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+  if (!window.jspdf) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await document.fonts?.ready;
+  const prevFit = fit;
+  document.body.classList.add("pdf"); fit = false; applyZoom(); decorate(); paginate();
+  try{
+    const pdf = new jspdf.jsPDF({orientation:"portrait", unit:"in", format:"letter", compress:true});
+    const pages = [...document.querySelectorAll("#page .page")];
+    for (let i = 0; i < pages.length; i++){
+      const canvas = await html2canvas(pages[i], {scale:2.5, backgroundColor:"#ffffff", useCORS:false, logging:false,
+        windowWidth:Math.max(document.documentElement.clientWidth, 900), onclone:keepWordsWhole});
+      if (i) pdf.addPage("letter", "portrait");
+      pdf.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", 0, 0, 8.5, 11);
+    }
+    return pdf.output("blob");
+  } finally {
+    document.body.classList.remove("pdf"); fit = prevFit; applyZoom(); paginate();
+  }
+}
+$("#print").addEventListener("click", async () => {
+  document.activeElement?.blur?.(); acHide(); decorate();
+  const dl = await downloadsCap();
+  if (!dl){ paginate(); window.print(); return; }      // standalone file: the browser's own print / save as PDF
+  const btn = $("#print"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "Making PDF…";
+  try{ const blob = await makePDF(); await saveFile(fileBase() + ".pdf", blob, "application/pdf"); }
+  catch(e){ toast("Could not make the PDF. Check your internet connection and try again."); }
+  finally{ btn.disabled = false; btn.textContent = label; }
+});
+addEventListener("beforeprint", () => { fit = false; applyZoom(); });
+addEventListener("afterprint", () => { fit = null; applyZoom(); paginate(); });
+
+/* ---------- poem library (kept in this browser) ---------- */
+const LIB = "chordsheet-poems";
+function libGet(){ try{ return JSON.parse(localStorage.getItem(LIB)) || []; }catch(e){ return []; } }
+function libPut(list){ try{ localStorage.setItem(LIB, JSON.stringify(list)); return true; }catch(e){ return false; } }
+function libRender(){
+  const list = libGet().sort((a, b) => b.updated - a.updated);
+  $("#liblist").innerHTML = list.length ? list.map(p => `<li data-id="${p.id}">
+      <span class="nm">${esc(p.name)}</span>
+      <span class="sub">${p.lang === "fa" ? "فارسی" : "English"} · ${new Date(p.updated).toLocaleDateString()}</span>
+      <button data-lib="open">Open</button><button data-lib="del" class="danger">Delete</button></li>`).join("")
+    : `<li class="empty">No saved poems yet.</li>`;
+}
+function libOpen(focusName){
+  $("#libname").value = S.title || ""; $("#libmsg").textContent = "";
+  libRender(); $("#lib").hidden = false;
+  if (focusName && !TOUCH){ $("#libname").focus(); $("#libname").select(); } else $("#libclose").focus();
+}
+function libClose(){ $("#lib").hidden = true; }
+$("#libclose").addEventListener("click", libClose);
+$("#lib").addEventListener("click", e => { if (e.target.id === "lib") libClose(); });
+$("#libsave").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("#libname").value.trim(); if (!name) return;
+  const list = libGet(), old = list.find(p => p.name === name);
+  const rec = {id: old?.id || Date.now().toString(36), name, lang:S.lang, updated:Date.now(), song:JSON.parse(JSON.stringify(S))};
+  if (old) Object.assign(old, rec); else list.push(rec);
+  $("#libmsg").textContent = libPut(list) ? (old ? `Updated “${name}”.` : `Saved “${name}”.`) : "Could not save: this browser's storage is full or blocked.";
+  libRender();
+});
+$("#liblist").addEventListener("click", e => {
+  const b = e.target.closest("button[data-lib]"); if (!b) return;
+  const id = b.closest("li").dataset.id, list = libGet(), p = list.find(x => x.id === id); if (!p) return;
+  if (b.dataset.lib === "open"){ S = JSON.parse(JSON.stringify(p.song)); render(); libClose(); }
+  else if (b.dataset.lib === "del"){
+    if (b.dataset.armed){ libPut(list.filter(x => x.id !== id)); $("#libmsg").textContent = `Deleted “${p.name}”.`; libRender(); }
+    else { b.dataset.armed = "1"; b.textContent = "Confirm delete"; }
+  }
+});
+
+window.__setSong = d => { S = d; render(); };
+window.__demo = demoSong;
+window.__demoEN = demoEN;
+window.__makePDF = makePDF;
+window.__S = () => S;
+
+{ const l = lastLang(); S = load(l) || sampleFor(l); }
+render(); resetHistory();
+document.fonts?.ready.then(() => render());
+</script>
+</body>
+</html>
