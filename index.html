@@ -136,7 +136,7 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .pfoot{position:absolute;bottom:.16in;left:0;right:0;text-align:center;font:600 8.5pt/1.35 var(--f-chord);color:#9a968e;letter-spacing:.05em;direction:ltr}
 .pfoot .pn{display:block;color:var(--ink-soft);font-size:9pt}
 
-.legend{margin-top:10px;padding-top:6px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;font:400 8.5pt/1.5 var(--f-lyric);color:var(--ink-soft)}
+.legend{position:absolute;left:.6in;right:.6in;bottom:.56in;padding-top:6px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;font:400 8.5pt/1.5 var(--f-lyric);color:var(--ink-soft)}
 .legend .sym{display:inline-block;min-width:20px;font:700 12pt var(--f-chord);color:var(--chord);text-align:center}
 .legend .sym.d{color:var(--delay)}
 .legend .sym.g{display:inline-block;min-width:0;width:18px;height:11px;background:var(--off);vertical-align:-1px;margin-inline-end:3px}
@@ -531,7 +531,7 @@ function render(focus){
   lg.push(`<div><span class="sym">↓↑</span><span class="fa">هر میز ${n} خانهٔ زمانی دارد؛ هر هجا زیر خانه‌ای نوشته شده که در آن خوانده می‌شود.</span><span class="en">Each bar has ${n} time slots; every syllable sits under the slot where it is sung.</span></div>`);
   lg.push(`<div><span class="sym">ـــ</span><span class="fa">خط اتصال یعنی کلمه ادامه دارد و کشیده خوانده می‌شود.</span><span class="en">A joining line means the word carries on (held or split by a chord change).</span></div>`);
   if (anyOff) lg.push(`<div><span class="sym g"></span><span class="fa">خانه‌های خاکستری خالی می‌مانند؛ مصراع بعد در خط بعد شروع می‌شود.</span><span class="en">Grey slots stay empty; the next line of the poem starts on the next line.</span></div>`);
-  push(`<div class="legend">${lg.join("")}</div>`);
+  LEGEND = `<div class="legend">${lg.join("")}</div>`;     // repeated at the foot of every sheet
 
   const book = $("#page");
   book.dir = dir; book.lang = S.lang;
@@ -546,6 +546,7 @@ function render(focus){
   if (focus) focusSlot(focus.id, focus.kind, focus.at);
   save();
 }
+let LEGEND = "";
 function pageHTML(inner, cont){
   return `<div class="page"><div class="pbody">${inner}</div></div>`;
 }
@@ -559,7 +560,8 @@ function paginate(){
   for (let i = 0; i < pages.length && i < 40; i++){
     const p = pages[i], body = p.querySelector(".pbody");
     if (i > 0 && !body.querySelector(".runhead")) body.insertAdjacentHTML("afterbegin", runheadHTML(L));
-    const r = p.getBoundingClientRect(), limit = r.top + r.width * PAGE_IN.limit / PAGE_IN.w;
+    if (!p.querySelector(":scope > .legend")) p.insertAdjacentHTML("beforeend", LEGEND);
+    const limit = p.querySelector(":scope > .legend").getBoundingClientRect().top - 4;   // content stops above the footnotes
     const movable = () => [...body.children].filter(b => !b.classList.contains("runhead"));
     const moved = [];
     let blocks = movable();
