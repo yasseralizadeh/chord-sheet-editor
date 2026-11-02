@@ -166,6 +166,10 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .liblist .empty{color:var(--ui-muted);font-size:13px;justify-content:center}
 .libnote{font-size:11.5px;color:var(--ui-muted);margin:10px 0 0}
 
+.ac.dock{display:flex;gap:6px;overflow-x:auto;border-radius:0;border-left:0;border-right:0;padding:7px max(8px,env(safe-area-inset-left,0px));box-shadow:0 -4px 14px rgba(0,0,0,.12)}
+.ac.dock div{flex:0 0 auto;font-size:16px;padding:10px 14px;border:1px solid var(--ui-line);background:var(--ui-bg);border-radius:7px}
+.ac.dock div.sel{background:var(--ui-bg);color:var(--ui-fg)}
+.ac.dock div:active{background:var(--ui-accent);color:#fff}
 /* on-screen key bar for phones and tablets (soft keyboards have no Tab key) */
 .keybar{position:fixed;left:0;right:0;top:0;z-index:35;display:flex;gap:5px;padding:6px max(8px,env(safe-area-inset-left,0px));background:var(--ui-panel);border-top:1px solid var(--ui-line);box-shadow:0 -4px 14px rgba(0,0,0,.1);direction:ltr;overflow-x:auto}
 .keybar button{flex:1 0 auto;font:600 13px var(--f-lyric);padding:9px 10px;border-radius:7px;white-space:nowrap}
@@ -303,6 +307,23 @@ const LEX = {
 /* contenteditable="plaintext-only" where supported (keeps pasted text plain), else "true" */
 const CE = (() => { try{ const d = document.createElement("div"); d.contentEditable = "plaintext-only"; return d.contentEditable === "plaintext-only" ? "plaintext-only" : "true"; }catch(e){ return "true"; } })();
 const TOUCH = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+/* iPhone/iPad zoom the page when a small text box is tapped, which throws the
+   suggestion strip off screen. maximum-scale=1 stops that auto-zoom; on iOS people
+   can still pinch to zoom. */
+if (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)){
+  const vm = document.querySelector('meta[name="viewport"]');
+  if (vm && !/maximum-scale/.test(vm.content)) vm.content += ", maximum-scale=1";
+}
+/* pin a bar to the bottom of what is visible (just above the on-screen keyboard) */
+function dock(el){
+  const vv = window.visualViewport, sc = vv ? vv.scale : 1;
+  el.style.transformOrigin = "0 0";
+  el.style.transform = sc !== 1 ? `scale(${1 / sc})` : "";
+  el.style.width = (vv ? vv.width * sc : innerWidth) + "px";
+  el.style.left = (vv ? vv.offsetLeft : 0) + "px";
+  const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
+  el.style.top = Math.max(0, bottom - (el.offsetHeight || 50) / sc) + "px";
+}
 
 /* ---------- state ---------- */
 const $ = s => document.querySelector(s);
@@ -421,7 +442,9 @@ function acShow(inp){
   acFor = inp; acSel = 0;
   box.innerHTML = list.map((c, i) => `<div data-v="${esc(c + (star ? "*" : ""))}" class="${i ? "" : "sel"}">${esc(c)}${star ? "*" : ""}${used.includes(c) ? "<small>in song</small>" : ""}</div>`).join("");
   const r = inp.getBoundingClientRect();
-  box.style.top = (r.bottom + 4) + "px"; box.style.left = Math.max(4, Math.min(r.left, innerWidth - 130)) + "px"; box.hidden = false;
+  box.hidden = false;
+  if (TOUCH){ box.classList.add("dock"); dock(box); }
+  else { box.classList.remove("dock"); box.style.top = (r.bottom + 4) + "px"; box.style.left = Math.max(4, Math.min(r.left, innerWidth - 130)) + "px"; }
 }
 function acHide(){ $("#ac").hidden = true; acFor = null; }
 function acPick(v){ const inp = acFor; acHide(); if (!inp) return; inp.value = v; commitChord(inp); }
@@ -437,6 +460,7 @@ function acKey(e){
   return false;
 }
 $("#ac").addEventListener("pointerdown", e => { const d = e.target.closest("[data-v]"); if (d){ e.preventDefault(); acPick(d.dataset.v); } });
+$("#ac").addEventListener("touchstart", e => { if (e.target.closest("[data-v]")) e.preventDefault(); }, {passive:false});
 function commitChord(inp){
   if (inp.id === "key"){ S.key = normChord(inp.value.replace("*", "")); render(); return; }
   const x = slotOf(inp.dataset.c); x.c = normChord(inp.value); render({id:inp.dataset.c, kind:"t", at:"start"});
@@ -641,7 +665,7 @@ function paintText(el, x, joinin){
   const want = (joinin && x.t ? ZWJ : "") + x.t + (x.j && x.t ? ZWJ : "");
   if (el.textContent !== want) el.textContent = want;
 }
-const cw = v => v ? (v.length * .5 + .25) + "em" : "14px";
+const cw = v => v ? (v.length * .55 + .45) + "em" : "14px";
 const slotOf = id => { const [s, l, b, k] = id.split(".").map(Number); return S.sections[s].lines[l].bars[b].slots[k]; };
 const lineOf = id => { const [s, l] = id.split(".").map(Number); return S.sections[s].lines[l]; };
 
@@ -719,6 +743,7 @@ let lastLyr = null, allowSpace = false;
 const page = $("#page");
 page.addEventListener("focusin", e => {
   const el = e.target;
+  if (el.dataset.c && TOUCH){ showKeybar(false); acShow(el); }   // phones: offer the song's chords right away
   if (el.dataset.t){
     lastLyr = el.dataset.t;
     const x = slotOf(el.dataset.t); if (el.textContent !== x.t) el.textContent = x.t;
@@ -818,13 +843,9 @@ page.addEventListener("pointerdown", e => {
 /* ---------- on-screen key bar (phones/tablets) ---------- */
 const keybar = $("#keybar");
 function showKeybar(on){ keybar.hidden = !(on && TOUCH); if (!keybar.hidden) placeKeybar(); }
-function placeKeybar(){
-  const vv = window.visualViewport;
-  const h = keybar.offsetHeight || 50;
-  const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
-  keybar.style.top = Math.max(0, bottom - h) + "px";
-}
-if (window.visualViewport){ visualViewport.addEventListener("resize", () => { if (!keybar.hidden) placeKeybar(); }); visualViewport.addEventListener("scroll", () => { if (!keybar.hidden) placeKeybar(); }); }
+function placeKeybar(){ dock(keybar); }
+function redock(){ if (!keybar.hidden) dock(keybar); if (TOUCH && !$("#ac").hidden) dock($("#ac")); }
+if (window.visualViewport){ visualViewport.addEventListener("resize", redock); visualViewport.addEventListener("scroll", redock); }
 keybar.addEventListener("pointerdown", e => {
   const b = e.target.closest("[data-k]"); if (!b) return;
   e.preventDefault();                                   // keep the caret (and the keyboard) in the slot
