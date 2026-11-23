@@ -141,6 +141,7 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .fgc .nv:empty,.tn .nv:empty{display:none!important}
 .strum.pk{cursor:pointer}
 .strum.pk:hover{background:var(--ui-hover)}
+.strum.own{font-weight:700}
 .strum.pkn{color:transparent}
 .legend .sym.t{font-size:10pt;font-style:italic}
 .tail{display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11pt/1 var(--f-chord);gap:2px}
@@ -565,14 +566,15 @@ function render(focus){
             const st = x.s || strum[k], notes = hasNotes(x);
             h += `<div class="strum pk${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[st] ? " on" : ""}${notes ? " pkn" : ""}" style="grid-column:${col}" data-ps="${id}" title="Tap to change this strum">${notes ? "" : (ARROW[st] || "·")}</div>`;
           } else
-          h += `<div class="strum${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[strum[k]] ? " on" : ""}${off ? " off" : ""}" style="grid-column:${col}">${ARROW[strum[k]] || "·"}</div>`;
+          { const sv = x.s || strum[k];
+          h += `<div class="strum${off ? " off" : " pk"}${x.s ? " own" : ""}${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[sv] ? " on" : ""}" style="grid-column:${col}"${off ? "" : ` data-ps="${id}" title="Tap to change this strum"`}>${ARROW[sv] || "·"}</div>`; }
         });
         h += `</div>`;
       });
       h += `<div class="tail" style="grid-column:${nb+1}">${ln.pick ? `<span class="pick">⊛</span>` : ""}${ln.rep ? `<span class="rep">×${ln.rep}</span>` : ""}</div>
         <div class="ltools screen">
-          <button data-act="copybar" title="Copy the bar you last tapped: chords, picking and strums">⧉ Copy bar</button>
-          <button data-act="pastebar" title="Paste the copied bar's music onto the bar you last tapped; its words stay">⎘ Paste bar</button>
+          <button data-act="copybar" title="Copy the bar you last tapped: chords, words, strums and picking">⧉ Copy bar</button>
+          <button data-act="pastebar" title="Replace the bar you last tapped with the copied bar">⎘ Paste bar</button>
           <button data-act="pickbar" class="${tabLine ? "on" : ""}" title="Turn the bar you last tapped into a finger-picking bar (tab), or back">♪ Picking bar</button>
           <button data-act="greyrest" title="Grey out unused slots from the selected slot (or after the last word) to the end of the line">▨ Grey rest</button>
           <button data-act="ungrey" title="Make every slot in this line usable again">Un-grey</button>
@@ -919,16 +921,10 @@ function sheetClick(e){
       const key = lastBar && lastBar.startsWith(`${s}.${l}.`) ? lastBar : null;
       if (!key){ toast("Tap inside the bar you want to paste into first."); return; }
       const bi = +key.split(".")[2], tgt = ln.bars[bi];
-      // music comes over; the target's words, joins and grey slots stay
-      tgt.slots.forEach((x, k) => {
-        const c = barClip.slots[k]; if (!c) return;
-        x.c = c.c || "";
-        if (c.n) x.n = [...c.n]; else delete x.n;
-        if (c.f) x.f = c.f; else delete x.f;
-        if (c.s) x.s = c.s; else delete x.s;
-      });
+      // the whole bar comes over: chords, words, strums, picking, grey slots
+      tgt.slots = tgt.slots.map((x, k) => barClip.slots[k] ? JSON.parse(JSON.stringify(barClip.slots[k])) : x);
       if (barClip.fp) tgt.fp = true; else delete tgt.fp;
-      render(); toast(`Pasted into bar ${bi + 1}.`);
+      render(); toast(`Pasted into bar ${bi + 1}: chords, words, strums and picking. Undo with ↶ if needed.`);
       return;
     }
     case "pickbar": {
