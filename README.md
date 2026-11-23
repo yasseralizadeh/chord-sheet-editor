@@ -16,6 +16,7 @@ It runs entirely in the browser. Nothing is uploaded, and the single `index.html
 - `*` after a chord (`G*`) for a vocal entry a couple of strums late, drawn as a dotted lead-in
 - ⊛ marks a finger-picking set at the end of a line; ×N repeats a line
 - Picking bars: turn any bar into a 6-string tab with fret numbers, finger letters (p i m a) and the strums you still play, on the same time slots as the lyrics
+- Copy a bar and paste its music (chords, picking, strums) onto another bar; the words there stay
 - Words that carry across a slot or barline stay joined (Persian letters keep their connected forms)
 - Grey out unused slots at the end of a line, so a poem's next line starts on the next row
 - Long songs flow onto extra Letter-size pages, numbered at the bottom

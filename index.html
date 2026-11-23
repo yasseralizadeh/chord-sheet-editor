@@ -573,6 +573,8 @@ function render(focus){
       });
       h += `<div class="tail" style="grid-column:${nb+1}">${ln.pick ? `<span class="pick">⊛</span>` : ""}${ln.rep ? `<span class="rep">×${ln.rep}</span>` : ""}</div>
         <div class="ltools screen">
+          <button data-act="copybar" title="Copy the bar you last tapped: chords, picking and strums">⧉ Copy bar</button>
+          <button data-act="pastebar" title="Paste the copied bar's music onto the bar you last tapped; its words stay">⎘ Paste bar</button>
           <button data-act="pickbar" class="${tabLine ? "on" : ""}" title="Turn the bar you last tapped into a finger-picking bar (tab), or back">♪ Picking bar</button>
           <button data-act="greyrest" title="Grey out unused slots from the selected slot (or after the last word) to the end of the line">▨ Grey rest</button>
           <button data-act="ungrey" title="Make every slot in this line usable again">Un-grey</button>
@@ -717,6 +719,8 @@ function pickCells(bar, x, id, col){
   return h + `</div>`;
 }
 let lastBar = null;
+let barClip = null;
+try{ barClip = JSON.parse(localStorage.getItem("chordsheet-barclip")) || null; }catch(e){}
 function tabNav(el, dt, ds){
   const [s, l, b, k, st] = el.dataset.n.split(".").map(Number);
   const nk = k + dt, nst = Math.min(5, Math.max(0, st + ds));
@@ -888,6 +892,9 @@ function sheetClick(e){
   const off = e.target.closest("[data-off]");
   if (off){ const id = off.dataset.off; slotOf(id).g = false; render({id, kind:"t", at:"start"}); return; }
   const b = e.target.closest("button"); if (!b) return;
+  if (b.closest(".ltools")){                      // close the tool bar so it doesn't cover the next line
+    b.blur(); b.closest(".mline")?.classList.remove("act");
+  }
   if (b.dataset.strum !== undefined){
     const n = SLOTS[S.time], arr = [...S.strum.padEnd(n, "-")].slice(0, n), i = +b.dataset.strum;
     arr[i] = {D:"U", U:"-", "-":"D"}[arr[i]] || "D"; S.strum = arr.join(""); render(); return;
@@ -898,6 +905,32 @@ function sheetClick(e){
     case "greyrest": {
       const inLine = lastLyr && lastLyr.startsWith(`${s}.${l}.`) ? lastLyr : null;
       greyRest(inLine, s, l); return;
+    }
+    case "copybar": {
+      const key = lastBar && lastBar.startsWith(`${s}.${l}.`) ? lastBar : null;
+      if (!key){ toast("Tap inside the bar you want to copy first."); return; }
+      const bi = +key.split(".")[2];
+      barClip = JSON.parse(JSON.stringify(ln.bars[bi]));
+      try{ localStorage.setItem("chordsheet-barclip", JSON.stringify(barClip)); }catch(e){}
+      toast(`Copied bar ${bi + 1}. Tap another bar, then press ⎘ Paste bar.`);
+      return;
+    }
+    case "pastebar": {
+      if (!barClip){ toast("Copy a bar first with ⧉ Copy bar."); return; }
+      const key = lastBar && lastBar.startsWith(`${s}.${l}.`) ? lastBar : null;
+      if (!key){ toast("Tap inside the bar you want to paste into first."); return; }
+      const bi = +key.split(".")[2], tgt = ln.bars[bi];
+      // music comes over; the target's words, joins and grey slots stay
+      tgt.slots.forEach((x, k) => {
+        const c = barClip.slots[k]; if (!c) return;
+        x.c = c.c || "";
+        if (c.n) x.n = [...c.n]; else delete x.n;
+        if (c.f) x.f = c.f; else delete x.f;
+        if (c.s) x.s = c.s; else delete x.s;
+      });
+      if (barClip.fp) tgt.fp = true; else delete tgt.fp;
+      render(); toast(`Pasted into bar ${bi + 1}.`);
+      return;
     }
     case "pickbar": {
       const key = lastBar && lastBar.startsWith(`${s}.${l}.`) ? lastBar : null;
