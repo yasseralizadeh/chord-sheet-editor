@@ -145,6 +145,9 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .strum.pkn{color:transparent}
 .legend .sym.t{font-size:10pt;font-style:italic}
 .tail{display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11pt/1 var(--f-chord);gap:2px}
+.hp{display:flex;flex-direction:column;align-items:center;gap:1px}
+.hp svg{display:block}
+.hp i{font:italic 600 7.5pt/1 var(--f-chord);color:var(--ink-soft);direction:ltr;unicode-bidi:isolate}
 .tail .pick{font-size:15pt;color:var(--chord)}
 .tail .rep{direction:ltr}
 
@@ -572,7 +575,7 @@ function render(focus){
         });
         h += `</div>`;
       });
-      h += `<div class="tail" style="grid-column:${nb+1}">${ln.pick ? `<span class="pick">⊛</span>` : ""}${ln.rep ? `<span class="rep">×${ln.rep}</span>` : ""}</div>
+      h += `<div class="tail" style="grid-column:${nb+1}">${ln.pick ? `<span class="pick">⊛</span>` : ""}${ln.rep ? `<span class="rep">×${ln.rep}</span>` : ""}${ln.dyn ? hairpin(ln.dyn, dir) : ""}</div>
         <div class="ltools screen">
           <button data-act="copybar" title="Copy the bar you last tapped: chords, words, strums and picking">⧉ Copy bar</button>
           <button data-act="pastebar" title="Replace the bar you last tapped with the copied bar">⎘ Paste bar</button>
@@ -581,6 +584,7 @@ function render(focus){
           <button data-act="ungrey" title="Make every slot in this line usable again">Un-grey</button>
           <button data-act="pick" class="${ln.pick ? "on" : ""}" title="Finger-picking set at line end">⊛</button>
           <button data-act="rep" title="Repeat count">×${ln.rep || 1}</button>
+          <button data-act="dyn" class="${ln.dyn ? "on" : ""}" title="Tap to cycle: fade out (dim.) → get louder (cresc.) → none">${ln.dyn === "cresc" ? "cresc. <" : "dim. >"}</button>
           <button data-act="addbar">+ bar</button><button data-act="delbar">− bar</button>
           <button data-act="lyrics" class="${ln.noLyric ? "on" : ""}" title="Hide the lyric row (instrumental line)">Instrumental</button>
           <button data-act="dupline">Duplicate</button><button data-act="newline" title="Add a line under this one">+ line below</button><button data-act="delline">Delete</button>
@@ -594,6 +598,9 @@ function render(focus){
   if (anyPick) lg.push(`<div><span class="sym">⊛</span><span class="fa">اجرای الگوی ویژهٔ انگشتی (فینگرپیکینگ) در پایان خط.</span><span class="en">Special finger-picking set at the end of the line.</span></div>`);
   lg.push(`<div><span class="sym">↓↑</span><span class="fa">هر میز ${n} خانهٔ زمانی دارد؛ هر هجا زیر خانه‌ای نوشته شده که در آن خوانده می‌شود.</span><span class="en">Each bar has ${n} time slots; every syllable sits under the slot where it is sung.</span></div>`);
   lg.push(`<div><span class="sym">ـــ</span><span class="fa">خط اتصال یعنی کلمه ادامه دارد و کشیده خوانده می‌شود.</span><span class="en">A joining line means the word carries on (held or split by a chord change).</span></div>`);
+  const dyns = new Set(S.sections.flatMap(s => s.lines.map(l => l.dyn)).filter(Boolean));
+  if (dyns.has("dim")) lg.push(`<div><span class="sym">${hairpin("dim", dir, true)}</span><span class="fa">دیمینوئندو: هر بار آرام‌تر، تا محو شدن (فید).</span><span class="en">Diminuendo: softer with each repeat, fading away.</span></div>`);
+  if (dyns.has("cresc")) lg.push(`<div><span class="sym">${hairpin("cresc", dir, true)}</span><span class="fa">کرشندو: هر بار بلندتر.</span><span class="en">Crescendo: louder with each repeat.</span></div>`);
   if (anyPickBar) lg.push(`<div><span class="sym t">p i m a</span><span class="fa">میز انگشتی: شش خط = شش سیم (خط بالا سیم ۱، می زیر)؛ عدد = شمارهٔ دستان؛ p شست، i اشاره، m میانی، a حلقه.</span><span class="en">Picking bar: six lines = six strings (top = 1st string, high E); numbers = frets; p thumb, i index, m middle, a ring.</span></div>`);
   if (anyOff) lg.push(`<div><span class="sym g"></span><span class="fa">خانه‌های خاکستری خالی می‌مانند؛ مصراع بعد در خط بعد شروع می‌شود.</span><span class="en">Grey slots stay empty; the next line of the poem starts on the next line.</span></div>`);
   LEGEND = `<div class="legend">${lg.join("")}</div>`;     // repeated at the foot of every sheet
@@ -705,6 +712,15 @@ function paintText(el, x, joinin){
   if (document.activeElement === el) return;
   const want = (joinin && x.t ? ZWJ : "") + x.t + (x.j && x.t ? ZWJ : "");
   if (el.textContent !== want) el.textContent = want;
+}
+/* hairpin: a wedge that narrows (dim.) or opens (cresc.) in the direction time runs: right to left on Farsi sheets */
+function hairpin(kind, dir, bare){
+  const narrows = kind === "dim", rtl = dir === "rtl";
+  const wideAtStart = narrows;                       // dim.: wide where it starts, closes at the end
+  const startX = rtl ? 24 : 2, endX = rtl ? 2 : 24;
+  const wx = wideAtStart ? startX : endX, nx = wideAtStart ? endX : startX;
+  const svg = `<svg width="26" height="11" viewBox="0 0 26 11" fill="none" stroke="#1b1d22" stroke-width="1.2" stroke-linecap="round"><path d="M${wx} 1.5 L${nx} 5.5 L${wx} 9.5"/></svg>`;
+  return bare ? svg : `<span class="hp">${svg}<i>${narrows ? "dim." : "cresc."}</i></span>`;
 }
 /* picking bars */
 const hasNotes = x => Array.isArray(x.n) && x.n.some(v => v !== "" && v != null);
@@ -940,6 +956,7 @@ function sheetClick(e){
     case "ungrey": ln.bars.forEach(b => b.slots.forEach(x => delete x.g)); break;
     case "pick": ln.pick = !ln.pick; break;
     case "rep": ln.rep = ({0:2, 1:2, 2:3, 3:4, 4:0})[ln.rep || 0]; break;
+    case "dyn": ln.dyn = ({undefined:"dim", dim:"cresc", cresc:undefined})[ln.dyn]; if (!ln.dyn) delete ln.dyn; break;
     case "addbar": ln.bars.push(emptyBar(n)); break;
     case "delbar": if (ln.bars.length > 1) ln.bars.pop(); break;
     case "lyrics": ln.noLyric = !ln.noLyric; break;

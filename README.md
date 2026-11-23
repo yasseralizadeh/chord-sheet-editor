@@ -15,6 +15,7 @@ It runs entirely in the browser. Nothing is uploaded, and the single `index.html
 - Chord autocomplete, chord diagrams, transpose ±1 semitone, capo
 - `*` after a chord (`G*`) for a vocal entry a couple of strums late, drawn as a dotted lead-in
 - ⊛ marks a finger-picking set at the end of a line; ×N repeats a line
+- dim. (fade out) or cresc. hairpins next to a line's repeat count
 - Picking bars: turn any bar into a 6-string tab with fret numbers, finger letters (p i m a) and the strums you still play, on the same time slots as the lyrics
 - Copy a bar and paste it onto another bar: chords, words, strums and picking
 - Tap any strum arrow to change it for that bar only
