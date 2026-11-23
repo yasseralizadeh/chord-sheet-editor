@@ -160,12 +160,13 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .pfoot{position:absolute;bottom:.16in;left:0;right:0;text-align:center;font:600 8.5pt/1.35 var(--f-chord);color:#9a968e;letter-spacing:.05em;direction:ltr}
 .pfoot .pn{display:block;color:var(--ink-soft);font-size:9pt}
 
-.legend{position:absolute;left:.6in;right:.6in;bottom:.56in;padding-top:6px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;font:400 8.5pt/1.5 var(--f-lyric);color:var(--ink-soft)}
+.legend{position:absolute;left:.6in;right:.6in;bottom:.56in;padding-top:6px;border-top:1px solid var(--rule);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 18px;font:400 8pt/1.45 var(--f-lyric);color:var(--ink-soft)}
 .legend .sym{display:inline-block;min-width:20px;font:700 12pt var(--f-chord);color:var(--chord);text-align:center}
 .legend .sym.d{color:var(--delay)}
 .legend .sym.g{display:inline-block;min-width:0;width:18px;height:11px;background:var(--off);vertical-align:-1px;margin-inline-end:3px}
 .legend .en{display:block;direction:ltr;text-align:left;font-size:8pt;opacity:.85}
 .book[dir=ltr] .legend .fa{display:none}
+.book[dir=rtl] .legend .en{display:none}   /* footnotes in the sheet's own language keep the block short */
 
 /* autocomplete, dialogs */
 .ac{position:fixed;z-index:20;background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:7px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:3px;direction:ltr;min-width:70px}
