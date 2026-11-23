@@ -133,11 +133,12 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .tn{position:relative;flex:1 1 0;display:flex;justify-content:center;align-items:center;min-height:0}
 .tn::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid #8f8b83}
 .tn input{position:relative;z-index:1;width:100%;max-width:20px;height:9px;font:700 8.5pt/9px var(--f-chord);color:var(--ink)}
-.tn input:not(:placeholder-shown){background:var(--paper)}
+.tn input:not(:placeholder-shown){background:var(--paper);width:calc(var(--d,1) * .56em + 2px)}
 .fgc input:hover,.tn input:hover{background:var(--ui-hover)}
 .fgc input:focus,.tn input:focus{background:#f3dcd7;box-shadow:0 0 0 1px var(--chord)}
-.fgc .nv,.tn .nv{display:none;position:relative;z-index:1;background:var(--paper);padding:0 1px;font:700 8.5pt/9px var(--f-chord);color:var(--ink);direction:ltr}
+.fgc .nv,.tn .nv{display:none;position:relative;z-index:1;background:var(--paper);padding:0 .5px;font:700 8.5pt/9px var(--f-chord);color:var(--ink);direction:ltr}
 .fgc .nv{font:italic 700 9pt/13px var(--f-chord);color:var(--chord)}
+.fgc .nv:empty,.tn .nv:empty{display:none!important}
 .strum.pk{cursor:pointer}
 .strum.pk:hover{background:var(--ui-hover)}
 .strum.pkn{color:transparent}
@@ -707,11 +708,11 @@ const hasNotes = x => Array.isArray(x.n) && x.n.some(v => v !== "" && v != null)
 function pickCells(bar, x, id, col){
   if (!bar.fp) return `<div class="fgc" style="grid-column:${col}"></div><div class="tabc" style="grid-column:${col}"></div>`;
   const n = x.n || [];
-  let h = `<div class="fgc" style="grid-column:${col}"><input data-fg="${id}" value="${esc(x.f || "")}" maxlength="2" placeholder=" " autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="finger">${x.f ? `<span class="nv">${esc(x.f)}</span>` : ""}</div>`;
+  let h = `<div class="fgc" style="grid-column:${col}"><input data-fg="${id}" value="${esc(x.f || "")}" maxlength="2" placeholder=" " autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="finger"><span class="nv">${esc(x.f || "")}</span></div>`;
   h += `<div class="tabc" style="grid-column:${col}">`;
   for (let st = 0; st < 6; st++){
     const v = n[st] ?? "";
-    h += `<div class="tn"><input data-n="${id}.${st}" value="${esc(v)}" maxlength="2" inputmode="numeric" placeholder=" " autocomplete="off" aria-label="string ${st + 1} fret">${v !== "" ? `<span class="nv">${esc(v)}</span>` : ""}</div>`;
+    h += `<div class="tn"><input data-n="${id}.${st}" value="${esc(v)}" style="--d:${String(v).length || 1}" maxlength="2" inputmode="numeric" placeholder=" " autocomplete="off" aria-label="string ${st + 1} fret"><span class="nv">${esc(v)}</span></div>`;
   }
   return h + `</div>`;
 }
@@ -834,14 +835,15 @@ page.addEventListener("input", e => {
   else if (el.dataset.n){
     const [s, l, b, k, st] = el.dataset.n.split(".").map(Number), x = S.sections[s].lines[l].bars[b].slots[k];
     const v = el.value.replace(/[^0-9xX]/g, "").toLowerCase(); if (v !== el.value) el.value = v;
+    el.style.setProperty("--d", v.length || 1);
     x.n = x.n || ["", "", "", "", "", ""]; x.n[st] = v;
     if (!hasNotes(x)) delete x.n;
-    el.nextElementSibling?.classList.contains("nv") && (el.nextElementSibling.textContent = v);
+    if (el.nextElementSibling?.classList.contains("nv")) el.nextElementSibling.textContent = v;
     const sc = document.querySelector(`[data-ps="${s}.${l}.${b}.${k}"]`);
     if (sc){ const on = hasNotes(x); sc.classList.toggle("pkn", on); const stv = x.s || [...S.strum.padEnd(SLOTS[S.time], "-")][k]; sc.textContent = on ? "" : (ARROW[stv] || "·"); }
     save(true);
   }
-  else if (el.dataset.fg){ const x = slotOf(el.dataset.fg); x.f = el.value.trim().toLowerCase(); if (!x.f) delete x.f; save(true); }
+  else if (el.dataset.fg){ const x = slotOf(el.dataset.fg); x.f = el.value.trim().toLowerCase(); if (el.nextElementSibling?.classList.contains("nv")) el.nextElementSibling.textContent = x.f; if (!x.f) delete x.f; save(true); }
   else if (el.dataset.f){ S[el.dataset.f] = el.textContent.trim(); save(true); }
   else if (el.dataset.sec){ S.sections[el.dataset.sec].name = el.textContent.trim(); save(true); }
 });
