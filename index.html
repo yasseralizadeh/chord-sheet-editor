@@ -886,7 +886,9 @@ page.addEventListener("paste", e => {
 function sheetClick(e){
   const ps = e.target.closest("[data-ps]");
   if (ps){
-    const x = slotOf(ps.dataset.ps); if (hasNotes(x)) return;
+    const [s0, l0, b0] = ps.dataset.ps.split(".").map(Number);
+    const x = slotOf(ps.dataset.ps);
+    if (S.sections[s0].lines[l0].bars[b0].fp && hasNotes(x)) return;   // a picked note there; the bar's tab notes are kept when picking is off
     const k = +ps.dataset.ps.split(".")[3], cur = x.s || [...S.strum.padEnd(SLOTS[S.time], "-")][k];
     x.s = {D:"U", U:"-", "-":"D"}[cur] || "D"; render(); return;
   }
