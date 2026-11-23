@@ -91,16 +91,16 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .sec-label .rule{flex:1;border-bottom:1px dotted var(--grid)}
 .sec-tools{display:flex;gap:4px;direction:ltr}
 
-.mline{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr)) 30px;font-size:var(--lf,13.5pt);margin:0 0 3px}
-.bar{display:grid;grid-template-columns:repeat(var(--s),minmax(0,1fr));grid-template-rows:20px 28px 13px;border-inline-start:1.5px solid var(--rule);min-width:0}
+.mline{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr)) 30px;font-size:var(--lf,13.5pt);margin:0 0 7px}
+.bar{display:grid;grid-template-columns:repeat(var(--s),minmax(0,1fr));grid-template-rows:13px 20px 28px;border-inline-start:1.5px solid var(--rule);min-width:0}
 .bar.last{border-inline-end:1.5px solid var(--rule)}
-.chordc{grid-row:1;display:flex;align-items:flex-end;padding-inline-start:2px;min-width:0;overflow:visible;position:relative;z-index:2}
+.chordc{grid-row:2;display:flex;align-items:flex-end;padding-inline-start:2px;min-width:0;overflow:visible;position:relative;z-index:2}
 .chordc .cv{display:none;font:700 14pt/20px var(--f-chord);color:var(--chord);direction:ltr;white-space:nowrap}
 .cv .star{color:var(--delay)}
 .chordc input{border:0;margin:0;padding:0;background:transparent;outline:none;-webkit-appearance:none;appearance:none;height:20px;font:700 14pt/20px var(--f-chord);color:var(--chord);direction:ltr;min-width:12px;max-width:80px;border-radius:3px;cursor:text}
 .chordc input:hover{background:var(--ui-hover)}
 .chordc input:focus{background:var(--ui-hover);box-shadow:inset 0 -2px 0 var(--chord)}
-.lyr{grid-row:2;display:flex;align-items:center;min-width:0;padding-inline:2px 0;font:500 1em/28px var(--f-lyric);white-space:pre;overflow:visible;position:relative;z-index:1}
+.lyr{grid-row:3;display:flex;align-items:center;min-width:0;padding-inline:2px 0;font:500 1em/28px var(--f-lyric);white-space:pre;overflow:visible;position:relative;z-index:1}
 .lyr.covered{z-index:0}
 .lyr.clash{box-shadow:inset 0 -2px 0 #d33}
 .lyr.ext::after{content:"";flex:1 1 auto;min-width:4px;height:1.6px;background:var(--ink);align-self:center;margin-top:7px}
@@ -112,23 +112,20 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .lyr.off{z-index:0}
 .lyr.off{border-radius:0}
 .lyr.off:hover{background:#dcd8d0}
-.strum{grid-row:3;border-top:1px solid var(--grid);font:600 8.5pt/12px var(--f-chord);text-align:center;color:var(--ink-soft)}
+.strum{grid-row:1;border-bottom:1px solid var(--grid);font:600 8.5pt/12px var(--f-chord);text-align:center;color:var(--ink-soft)}
 .strum.beat{border-inline-start:1px solid var(--grid)}
 .strum.first{border-inline-start:0}
 .strum.on{color:var(--ink)}
 .strum.off{color:#a9a59d}
 .mline.nolyric .lyr{display:none}
-.mline.nolyric .bar{grid-template-rows:20px 13px}
-.mline.nolyric .strum{grid-row:2}
-/* picking bars: finger letters, a 6-line tab staff (top line = 1st string, high E), then the strum row */
-.mline.tab .bar{grid-template-rows:20px 28px 13px 48px 13px}
-.mline.tab .fgc{grid-row:3}
-.mline.tab .tabc{grid-row:4}
-.mline.tab .strum{grid-row:5}
-.mline.tab.nolyric .bar{grid-template-rows:20px 13px 48px 13px}
-.mline.tab.nolyric .fgc{grid-row:2}
-.mline.tab.nolyric .tabc{grid-row:3}
-.mline.tab.nolyric .strum{grid-row:4}
+.mline.nolyric .bar{grid-template-rows:13px 20px}
+/* row order in every bar: strum, chord, lyric; picking bars add finger letters and a 6-line tab staff (top line = 1st string, high E) */
+.mline.tab .bar{grid-template-rows:13px 20px 28px 13px 48px}
+.mline.tab .fgc{grid-row:4}
+.mline.tab .tabc{grid-row:5}
+.mline.tab.nolyric .bar{grid-template-rows:13px 20px 13px 48px}
+.mline.tab.nolyric .fgc{grid-row:3}
+.mline.tab.nolyric .tabc{grid-row:4}
 .fgc{display:flex;justify-content:center;align-items:center;min-width:0}
 .fgc input,.tn input{border:0;margin:0;padding:0;background:transparent;outline:none;-webkit-appearance:none;appearance:none;text-align:center;direction:ltr;border-radius:2px}
 .fgc input{width:100%;height:13px;font:italic 700 9pt/13px var(--f-chord);color:var(--chord)}
@@ -143,7 +140,7 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .fgc .nv{font:italic 700 9pt/13px var(--f-chord);color:var(--chord)}
 .strum.pk{cursor:pointer}
 .strum.pk:hover{background:var(--ui-hover)}
-.strum.pkn{color:transparent;border-top-color:transparent}
+.strum.pkn{color:transparent}
 .legend .sym.t{font-size:10pt;font-style:italic}
 .tail{display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11pt/1 var(--f-chord);gap:2px}
 .tail .pick{font-size:15pt;color:var(--chord)}
