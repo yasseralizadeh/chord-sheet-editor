@@ -550,7 +550,7 @@ function render(focus){
     if (si > 0 && sec.newPage) sheets.push([]);
     push(`<div class="sec-label">
       <span class="name" contenteditable="${CE}" data-sec="${si}" data-ph="—">${esc(sec.name)}</span><span class="rule"></span>
-      <span class="sec-tools screen">${si ? `<button data-act="mergeup" data-s="${si}" title="Remove this title and join these lines to the section above">Merge up</button><button data-act="pgbreak" data-s="${si}" class="${sec.newPage ? "on" : ""}" title="Start this section on a new sheet">New page</button>` : ""}<button data-act="addline" data-s="${si}">+ line</button><button data-act="delsec" data-s="${si}">Delete section</button></span></div>`);
+      <span class="sec-tools screen">${si ? `<button data-act="mergeup" data-s="${si}" title="Remove this title and join these lines to the section above">Merge up</button><button data-act="pgbreak" data-s="${si}" class="${sec.newPage ? "on" : ""}" title="Start this section on a new sheet">New page</button>` : ""}<button data-act="addline" data-s="${si}" title="Add a line right under this title">+ line</button><button data-act="delsec" data-s="${si}">Delete section</button></span></div>`);
     sec.lines.forEach((ln, li) => {
       const tabLine = ln.bars.some(b => b.fp);
       let h = `<div class="mline${ln.noLyric ? " nolyric" : ""}${tabLine ? " tab" : ""}" style="--n:${nb}" data-s="${si}" data-l="${li}">`;
@@ -583,7 +583,7 @@ function render(focus){
           <button data-act="rep" title="Repeat count">×${ln.rep || 1}</button>
           <button data-act="addbar">+ bar</button><button data-act="delbar">− bar</button>
           <button data-act="lyrics" class="${ln.noLyric ? "on" : ""}" title="Hide the lyric row (instrumental line)">Instrumental</button>
-          <button data-act="dupline">Duplicate</button><button data-act="newline">+ line</button><button data-act="delline">Delete</button>
+          <button data-act="dupline">Duplicate</button><button data-act="newline" title="Add a line under this one">+ line below</button><button data-act="delline">Delete</button>
         </div></div>`;
       push(h);
     });
@@ -944,9 +944,9 @@ function sheetClick(e){
     case "delbar": if (ln.bars.length > 1) ln.bars.pop(); break;
     case "lyrics": ln.noLyric = !ln.noLyric; break;
     case "dupline": sec.lines.splice(l + 1, 0, JSON.parse(JSON.stringify(ln))); break;
-    case "newline": sec.lines.splice(l + 1, 0, emptyLine(ln.bars.length, n)); break;
+    case "newline": sec.lines.splice(l + 1, 0, emptyLine(ln.bars.length, n)); render({id:`${s}.${l + 1}.0.0`, kind:"t", at:"start"}); return;
     case "delline": sec.lines.splice(l, 1); if (!sec.lines.length) S.sections.splice(s, 1); break;
-    case "addline": sec.lines.push(emptyLine(S.bpl, n)); break;
+    case "addline": sec.lines.unshift(emptyLine(sec.lines[0]?.bars.length || S.bpl, n)); render({id:`${s}.0.0.0`, kind:"t", at:"start"}); return;   // right under the section title
     case "delsec": S.sections.splice(s, 1); if (!S.sections.length) S.sections.push({name:LEX[S.lang].sec.verse, lines:[emptyLine(S.bpl, n)]}); break;
     case "addsec": S.sections.push({name:b.dataset.name, lines:[emptyLine(S.bpl, n)]}); break;
     case "pgbreak": sec.newPage = !sec.newPage; break;
