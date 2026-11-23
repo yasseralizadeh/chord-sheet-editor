@@ -19,6 +19,7 @@ It runs entirely in the browser. Nothing is uploaded, and the single `index.html
 - Picking bars: turn any bar into a 6-string tab with fret numbers, finger letters (p i m a) and the strums you still play, on the same time slots as the lyrics
 - Copy a bar and paste it onto another bar: chords, words, strums and picking
 - Tap any strum arrow to change it for that bar only
+- Accents: Shift+click a strum (or press and hold on a phone) to make it bold, in the pattern for every bar or in one bar
 - Words that carry across a slot or barline stay joined (Persian letters keep their connected forms)
 - Grey out unused slots at the end of a line, so a poem's next line starts on the next row
 - Long songs flow onto extra Letter-size pages, numbered at the bottom
@@ -36,6 +37,7 @@ It runs entirely in the browser. Nothing is uploaded, and the single `index.html
 | Enter | Next line |
 | Backspace in an empty slot | Previous slot |
 | Ctrl/⌘+Z, Ctrl/⌘+Shift+Z | Undo, redo |
+| Shift+click a strum arrow | Accent on/off |
 
 ## Examples
 

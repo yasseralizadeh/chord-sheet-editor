@@ -141,7 +141,10 @@ button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:#
 .fgc .nv:empty,.tn .nv:empty{display:none!important}
 .strum.pk{cursor:pointer}
 .strum.pk:hover{background:var(--ui-hover)}
-.strum.own{font-weight:700}
+.strum.own{background:rgba(138,43,43,.05)}          /* changed in this bar only (screen) */
+.acc{font-weight:900;font-size:1.4em;line-height:.8;color:var(--ink);-webkit-text-stroke:.7px currentColor}
+@media print{.strum.own{background:none}}
+body.pdf .strum.own{background:none}
 .strum.pkn{color:transparent}
 .legend .sym.t{font-size:10pt;font-style:italic}
 .tail{display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 11pt/1 var(--f-chord);gap:2px}
@@ -287,6 +290,7 @@ body.pdf .fgc .nv,body.pdf .tn .nv{display:inline}
     <kbd>Enter</kbd> → next line ·
     <kbd>Backspace</kbd> in an empty slot → back ·
     Click a grey slot to use it again ·
+    <kbd>Shift</kbd>+click a strum → accent ·
     <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> undo, +<kbd>Shift</kbd> redo</p>
 </header>
 <div class="stage">
@@ -543,7 +547,7 @@ function render(focus){
       <span>${L.time} <b>${esc(S.time)}</b></span>
       ${S.key ? `<span>${L.key} <b>${esc(S.key)}</b></span>` : ""}
       ${S.capo ? `<span>${L.capo} <b>${esc(S.capo)}</b></span>` : ""}
-      <span>${L.strum} <span class="strumkey" title="Tap to change">${strum.map((x, i) => `<button class="${i % beat === 0 ? "beat" : ""}" data-strum="${i}" aria-label="slot ${i+1}">${ARROW[x] || "·"}</button>`).join("")}</span></span>
+      <span>${L.strum} <span class="strumkey" title="Tap to change">${strum.map((x, i) => `<button class="${i % beat === 0 ? "beat" : ""}" data-strum="${i}" aria-label="slot ${i+1}${S.acc?.[i] ? ", accented" : ""}" title="Tap to change · Shift+click or hold for an accent">${arrowHTML(x, S.acc?.[i])}</button>`).join("")}</span></span>
     </div>
     <div class="notes" contenteditable="${CE}" data-f="notes" data-ph="${L.notes}">${esc(S.notes)}</div>
   </div>
@@ -568,10 +572,10 @@ function render(focus){
           if (tabLine) h += pickCells(bar, x, id, col);
           if (bar.fp){
             const st = x.s || strum[k], notes = hasNotes(x);
-            h += `<div class="strum pk${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[st] ? " on" : ""}${notes ? " pkn" : ""}" style="grid-column:${col}" data-ps="${id}" title="Tap to change this strum">${notes ? "" : (ARROW[st] || "·")}</div>`;
+            h += `<div class="strum pk${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[st] ? " on" : ""}${notes ? " pkn" : ""}" style="grid-column:${col}" data-ps="${id}" title="Tap to change this strum · Shift+click or hold for an accent">${notes ? "" : arrowHTML(st, accOf(x, k))}</div>`;
           } else
           { const sv = x.s || strum[k];
-          h += `<div class="strum${off ? " off" : " pk"}${x.s ? " own" : ""}${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[sv] ? " on" : ""}" style="grid-column:${col}"${off ? "" : ` data-ps="${id}" title="Tap to change this strum"`}>${ARROW[sv] || "·"}</div>`; }
+          h += `<div class="strum${off ? " off" : " pk"}${x.s || x.a !== undefined ? " own" : ""}${k % beat === 0 ? " beat" : ""}${k === 0 ? " first" : ""}${ARROW[sv] ? " on" : ""}" style="grid-column:${col}"${off ? "" : ` data-ps="${id}" title="Tap to change this strum · Shift+click or hold for an accent"`}>${off ? (ARROW[sv] || "·") : arrowHTML(sv, accOf(x, k))}</div>`; }
         });
         h += `</div>`;
       });
@@ -601,6 +605,8 @@ function render(focus){
   const dyns = new Set(S.sections.flatMap(s => s.lines.map(l => l.dyn)).filter(Boolean));
   if (dyns.has("dim")) lg.push(`<div><span class="sym">${hairpin("dim", dir, true)}</span><span class="fa">دیمینوئندو: هر بار آرام‌تر، تا محو شدن (فید).</span><span class="en">Diminuendo: softer with each repeat, fading away.</span></div>`);
   if (dyns.has("cresc")) lg.push(`<div><span class="sym">${hairpin("cresc", dir, true)}</span><span class="fa">کرشندو: هر بار بلندتر.</span><span class="en">Crescendo: louder with each repeat.</span></div>`);
+  const anyAcc = (S.acc || []).some(Boolean) || allSlots().some(x => x.a);
+  if (anyAcc) lg.push(`<div><span class="sym"><b class="acc">↓</b></span><span class="fa">پیکان پررنگ = تأکید (اکسنت): آن ضربه را محکم‌تر بزنید.</span><span class="en">Bold arrow = accent: strike that strum harder.</span></div>`);
   if (anyPickBar) lg.push(`<div><span class="sym t">p i m a</span><span class="fa">میز انگشتی: شش خط = شش سیم (خط بالا سیم ۱، می زیر)؛ عدد = شمارهٔ دستان؛ p شست، i اشاره، m میانی، a حلقه.</span><span class="en">Picking bar: six lines = six strings (top = 1st string, high E); numbers = frets; p thumb, i index, m middle, a ring.</span></div>`);
   if (anyOff) lg.push(`<div><span class="sym g"></span><span class="fa">خانه‌های خاکستری خالی می‌مانند؛ مصراع بعد در خط بعد شروع می‌شود.</span><span class="en">Grey slots stay empty; the next line of the poem starts on the next line.</span></div>`);
   LEGEND = `<div class="legend">${lg.join("")}</div>`;     // repeated at the foot of every sheet
@@ -713,6 +719,24 @@ function paintText(el, x, joinin){
   const want = (joinin && x.t ? ZWJ : "") + x.t + (x.j && x.t ? ZWJ : "");
   if (el.textContent !== want) el.textContent = want;
 }
+/* accents: the pattern sets them for every bar (S.acc); a bar's slot can differ (x.a) */
+const accOf = (x, k) => x.a !== undefined ? x.a : !!S.acc?.[k];
+const arrowHTML = (v, acc) => ARROW[v] ? (acc ? `<b class="acc">${ARROW[v]}</b>` : ARROW[v]) : "·";
+/* press and hold (phones have no Shift): marks the element; the click that follows reads the mark */
+let holdT = null, holdSkip = 0;
+const held = () => false;   // a hold sends its own Shift-click (below)
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest?.("[data-ps],[data-strum]"); if (!el || e.pointerType === "mouse") return;
+  clearTimeout(holdT);
+  holdT = setTimeout(() => {
+    holdSkip = Date.now() + 900;                    // ignore the ordinary tap that follows the hold
+    navigator.vibrate?.(15);
+    el.dispatchEvent(new MouseEvent("click", {bubbles:true, shiftKey:true}));
+  }, 450);
+}, true);
+document.addEventListener("click", e => { if (e.isTrusted && Date.now() < holdSkip && e.target.closest?.("[data-ps],[data-strum]")){ e.stopPropagation(); e.preventDefault(); holdSkip = 0; } }, true);
+["pointerup", "pointercancel", "pointermove"].forEach(t => document.addEventListener(t, e => { if (t !== "pointermove" || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(holdT); }, true));
+document.addEventListener("contextmenu", e => { if (e.target.closest?.("[data-ps],[data-strum]")) e.preventDefault(); }, true);
 /* hairpin: a wedge that narrows (dim.) or opens (cresc.) in the direction time runs: right to left on Farsi sheets */
 function hairpin(kind, dir, bare){
   const narrows = kind === "dim", rtl = dir === "rtl";
@@ -859,7 +883,7 @@ page.addEventListener("input", e => {
     if (!hasNotes(x)) delete x.n;
     if (el.nextElementSibling?.classList.contains("nv")) el.nextElementSibling.textContent = v;
     const sc = document.querySelector(`[data-ps="${s}.${l}.${b}.${k}"]`);
-    if (sc){ const on = hasNotes(x); sc.classList.toggle("pkn", on); const stv = x.s || [...S.strum.padEnd(SLOTS[S.time], "-")][k]; sc.textContent = on ? "" : (ARROW[stv] || "·"); }
+    if (sc){ const on = hasNotes(x); sc.classList.toggle("pkn", on); const stv = x.s || [...S.strum.padEnd(SLOTS[S.time], "-")][k]; sc.innerHTML = on ? "" : arrowHTML(stv, accOf(x, k)); }
     save(true);
   }
   else if (el.dataset.fg){ const x = slotOf(el.dataset.fg); x.f = el.value.trim().toLowerCase(); if (el.nextElementSibling?.classList.contains("nv")) el.nextElementSibling.textContent = x.f; if (!x.f) delete x.f; save(true); }
@@ -907,6 +931,11 @@ function sheetClick(e){
     const x = slotOf(ps.dataset.ps);
     if (S.sections[s0].lines[l0].bars[b0].fp && hasNotes(x)) return;   // a picked note there; the bar's tab notes are kept when picking is off
     const k = +ps.dataset.ps.split(".")[3], cur = x.s || [...S.strum.padEnd(SLOTS[S.time], "-")][k];
+    if (e.shiftKey || held(ps)){
+      const want = !accOf(x, k);
+      if (want === !!S.acc?.[k]) delete x.a; else x.a = want;      // only store what differs from the pattern
+      render(); toast(want ? "Accent on: strike this strum harder." : "Accent off."); return;
+    }
     x.s = {D:"U", U:"-", "-":"D"}[cur] || "D"; render(); return;
   }
   const off = e.target.closest("[data-off]");
@@ -917,6 +946,11 @@ function sheetClick(e){
   }
   if (b.dataset.strum !== undefined){
     const n = SLOTS[S.time], arr = [...S.strum.padEnd(n, "-")].slice(0, n), i = +b.dataset.strum;
+    if (e.shiftKey || held(b)){
+      S.acc = Array.from({length:n}, (_, j) => !!S.acc?.[j]); S.acc[i] = !S.acc[i];
+      if (!S.acc.some(Boolean)) delete S.acc;
+      render(); toast(S.acc?.[i] ? "Accent added to the pattern: every bar strikes this strum harder." : "Accent removed from the pattern."); return;
+    }
     arr[i] = {D:"U", U:"-", "-":"D"}[arr[i]] || "D"; S.strum = arr.join(""); render(); return;
   }
   const a = b.dataset.act, ml = b.closest(".mline"), n = SLOTS[S.time];
@@ -1035,7 +1069,7 @@ $("#time").addEventListener("change", e => {
       extra.forEach(x => { if (x.t) last.t = (last.t ? last.t + " " : "") + x.t; if (x.c && !last.c) last.c = x.c; });
     }
   })));
-  S.time = e.target.value; S.strum = DEF_STRUM[S.time]; render();
+  S.time = e.target.value; S.strum = DEF_STRUM[S.time]; delete S.acc; render();
 });
 $("#key").addEventListener("input", e => acShow(e.target));
 $("#key").addEventListener("keydown", e => { if (!acKey(e) && e.key === "Enter"){ e.preventDefault(); commitChord(e.target); } });
