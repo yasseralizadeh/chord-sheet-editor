@@ -550,7 +550,7 @@ function render(focus){
     if (si > 0 && sec.newPage) sheets.push([]);
     push(`<div class="sec-label">
       <span class="name" contenteditable="${CE}" data-sec="${si}" data-ph="—">${esc(sec.name)}</span><span class="rule"></span>
-      <span class="sec-tools screen">${si ? `<button data-act="pgbreak" data-s="${si}" class="${sec.newPage ? "on" : ""}" title="Start this section on a new sheet">New page</button>` : ""}<button data-act="addline" data-s="${si}">+ line</button><button data-act="delsec" data-s="${si}">Delete section</button></span></div>`);
+      <span class="sec-tools screen">${si ? `<button data-act="mergeup" data-s="${si}" title="Remove this title and join these lines to the section above">Merge up</button><button data-act="pgbreak" data-s="${si}" class="${sec.newPage ? "on" : ""}" title="Start this section on a new sheet">New page</button>` : ""}<button data-act="addline" data-s="${si}">+ line</button><button data-act="delsec" data-s="${si}">Delete section</button></span></div>`);
     sec.lines.forEach((ln, li) => {
       const tabLine = ln.bars.some(b => b.fp);
       let h = `<div class="mline${ln.noLyric ? " nolyric" : ""}${tabLine ? " tab" : ""}" style="--n:${nb}" data-s="${si}" data-l="${li}">`;
@@ -950,6 +950,7 @@ function sheetClick(e){
     case "delsec": S.sections.splice(s, 1); if (!S.sections.length) S.sections.push({name:LEX[S.lang].sec.verse, lines:[emptyLine(S.bpl, n)]}); break;
     case "addsec": S.sections.push({name:b.dataset.name, lines:[emptyLine(S.bpl, n)]}); break;
     case "pgbreak": sec.newPage = !sec.newPage; break;
+    case "mergeup": if (s > 0){ S.sections[s - 1].lines.push(...sec.lines); S.sections.splice(s, 1); toast("Joined to the section above. Undo with ↶ if needed."); } break;
     case "addpage": S.sections.push({name:LEX[S.lang].sec.verse, newPage:true, lines:[emptyLine(S.bpl, n), emptyLine(S.bpl, n)]}); break;
     default: return;
   }
